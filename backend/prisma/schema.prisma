@@ -1,0 +1,139 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         String     @default("Employee") // Employee, Manager, Admin
+  isActive     Boolean    @default(true)
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  bookings     Booking[]
+  favorites    Favorite[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@map("users")
+}
+
+model Department {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  bookingQuota Int      @default(5)
+  users        User[]
+
+  @@map("departments")
+}
+
+model Floor {
+  id           Int      @id @default(autoincrement())
+  name         String   // e.g. "3rd Floor"
+  building     String   // e.g. "Block A"
+  floorPlanUrl String?
+  rooms        Room[]
+
+  @@map("floors")
+}
+
+model Room {
+  id           Int           @id @default(autoincrement())
+  name         String
+  roomNumber   String        @unique
+  capacity     Int
+  floorId      Int
+  floor        Floor         @relation(fields: [floorId], references: [id])
+  location     String?       // Additional directions
+  description  String?
+  status       String        @default("Available") // Available, Maintenance
+  heroImageUrl String?
+  avgRating    Float         @default(0.0)
+  bookings     Booking[]
+  amenities    RoomAmenity[]
+  photos       RoomPhoto[]
+  favorites    Favorite[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("rooms")
+}
+
+model RoomAmenity {
+  id        Int     @id @default(autoincrement())
+  roomId    Int
+  room      Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  name      String  // e.g. "Projector", "TV"
+  icon      String? // e.g. "projector-icon"
+  isActive  Boolean @default(true)
+
+  @@map("room_amenities")
+}
+
+model RoomPhoto {
+  id     Int    @id @default(autoincrement())
+  roomId Int
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  url    String
+
+  @@map("room_photos")
+}
+
+model Booking {
+  id             Int              @id @default(autoincrement())
+  userId         Int
+  user           User             @relation(fields: [userId], references: [id])
+  roomId         Int
+  room           Room             @relation(fields: [roomId], references: [id])
+  startTime      DateTime
+  endTime        DateTime
+  title          String
+  agenda         String?
+  status         String           @default("Confirmed") // Pending, Confirmed, Cancelled
+  recurrenceRule String?          // For recurring meetings
+  checkedIn      Boolean          @default(false)
+  attendees      Attendee[]
+  history        BookingHistory[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@map("bookings")
+}
+
+model Attendee {
+  id        Int     @id @default(autoincrement())
+  bookingId Int
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  email     String
+  status    String  @default("Pending") // Pending, Accepted, Declined
+
+  @@map("attendees")
+}
+
+model BookingHistory {
+  id          Int      @id @default(autoincrement())
+  bookingId   Int
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  action      String   // e.g. "Created", "Cancelled", "Modified"
+  performedBy String   // user email
+  timestamp   DateTime @default(now())
+
+  @@map("booking_histories")
+}
+
+model Favorite {
+  id     Int  @id @default(autoincrement())
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId Int
+  room   Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@map("favorites")
+}
