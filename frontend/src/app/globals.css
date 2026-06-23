@@ -48,7 +48,7 @@
   --color-on-surface-variant: var(--color-on-surface-variant);
   --color-surface-container-high: var(--color-surface-container-high);
   --color-error: var(--color-error-val);
-  
+
   --spacing-base: 8px;
   --spacing-container-padding: 24px;
   --spacing-stack-lg: 24px;
@@ -94,7 +94,7 @@
   --color-inverse-on-surface: #f8fafc;
   --color-inverse-primary: #c0c1ff;
   --color-surface-variant: #e2e8f0;
-  
+
   --color-secondary-fixed: #e9ddff;
   --color-primary-fixed: #e1e0ff;
   --color-surface-tint: #c0c1ff;
@@ -110,12 +110,12 @@
   --color-on-secondary-fixed: #23005c;
   --color-primary-fixed-dim: #c0c1ff;
   --color-inverse-primary: #494bd6;
-  
-  --glass-bg: rgba(255, 255, 255, 0.45);
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-top-highlight: rgba(255, 255, 255, 0.85);
-  --glow-opacity-indigo: 0.08;
-  --glow-opacity-violet: 0.08;
+
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(226, 232, 240, 0.7);
+  --glass-top-highlight: rgba(255, 255, 255, 0.6);
+  --glow-opacity-indigo: 0.05;
+  --glow-opacity-violet: 0.05;
 }
 
 .dark {
@@ -207,32 +207,46 @@ body {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.05);
 }
+
 .dark ::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.2);
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(70, 69, 84, 0.3);
   border-radius: 4px;
 }
+
 .dark ::-webkit-scrollbar-thumb {
   background: rgba(70, 69, 84, 0.5);
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(144, 143, 160, 0.8);
 }
 
 /* Button Gradient Animation */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(128, 131, 255, 0.4); }
-  50% { box-shadow: 0 0 30px rgba(128, 131, 255, 0.7); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(128, 131, 255, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(128, 131, 255, 0.7);
+  }
 }
+
 .btn-gradient-primary {
   background: linear-gradient(135deg, var(--color-primary-val), var(--color-secondary));
   transition: all 0.3s ease;
 }
+
 .btn-gradient-primary:hover {
   transform: scale(1.02);
   animation: pulse-glow 2s infinite;
@@ -241,25 +255,43 @@ body {
 /* Card active glow state */
 .card-active-glow {
   box-shadow: inset 0 0 15px rgba(128, 131, 255, 0.2),
-              0 0 20px rgba(128, 131, 255, 0.15);
+    0 0 20px rgba(128, 131, 255, 0.15);
   border-color: var(--color-primary-val);
 }
 
 /* Pulsing Dot Animation */
 @keyframes pulse-dot-emerald {
-  0% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(78, 222, 163, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(78, 222, 163, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px rgba(78, 222, 163, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(78, 222, 163, 0);
+  }
 }
+
 .dot-available {
   animation: pulse-dot-emerald 2s infinite;
 }
 
 @keyframes pulse-dot-amber {
-  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+  }
 }
+
 .dot-busy {
   animation: pulse-dot-amber 2s infinite;
 }
@@ -267,6 +299,7 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
