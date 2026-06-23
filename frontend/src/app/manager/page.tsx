@@ -23,9 +23,24 @@ interface Booking {
   attendees: string[];
 }
 
-export default function BookingDashboard() {
-  const role = "user";
-  const [currentView, setCurrentView] = useState<string>("rooms"); // "rooms" | "bookings"
+interface PendingApproval {
+  id: string;
+  roomName: string;
+  roomId: string;
+  requestedBy: string;
+  role: string;
+  dateText: string;
+  dateVal: string;
+  timeText: string;
+  timeVal: string;
+  attendeesCount: number;
+  details: string;
+  priority: "VIP" | "Standard" | "Training";
+}
+
+export default function ManagerPortal() {
+  const role = "manager";
+  const [currentView, setCurrentView] = useState<string>("bookings"); // "bookings" | "rooms"
 
   // Unified reactive mock database state
   const [rooms, setRooms] = useState<Room[]>([
@@ -119,6 +134,51 @@ export default function BookingDashboard() {
     }
   ]);
 
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([
+    {
+      id: "REQ-001",
+      roomName: "Alpha Boardroom",
+      roomId: "olympus",
+      requestedBy: "Sarah Jenkins (VP Operations)",
+      role: "VP Operations",
+      dateText: "Tomorrow",
+      dateVal: "24",
+      timeText: "09:00 - 14:00",
+      timeVal: "1:00 PM",
+      attendeesCount: 12,
+      details: "Full Catering Needed",
+      priority: "VIP"
+    },
+    {
+      id: "REQ-002",
+      roomName: "Beta Lab",
+      roomId: "titan",
+      requestedBy: "Design Team",
+      role: "Product Design",
+      dateText: "Jun 24",
+      dateVal: "24",
+      timeText: "14:00 - 16:00",
+      timeVal: "2:00 PM",
+      attendeesCount: 4,
+      details: "AV & Screen Setup Required",
+      priority: "Standard"
+    },
+    {
+      id: "REQ-003",
+      roomName: "Studio C",
+      roomId: "atlas",
+      requestedBy: "HR Dept",
+      role: "Human Resources",
+      dateText: "Jun 26",
+      dateVal: "26",
+      timeText: "09:00 - 17:00",
+      timeVal: "2:30 PM",
+      attendeesCount: 25,
+      details: "No Custom Setup",
+      priority: "Training"
+    }
+  ]);
+
   // UI state for standard Booking panel
   const [selectedRoomId, setSelectedRoomId] = useState<string>("olympus");
   const [selectedDate, setSelectedDate] = useState<string>("23");
@@ -131,6 +191,10 @@ export default function BookingDashboard() {
   const [attendeeInput, setAttendeeInput] = useState<string>("");
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // Manager Approval Queue search and filtering states
+  const [approvalSearchQuery, setApprovalSearchQuery] = useState<string>("");
+  const [approvalFilter, setApprovalFilter] = useState<"all" | "vip" | "large">("all");
 
   // Initialize and Toggle Theme
   useEffect(() => {
@@ -206,7 +270,7 @@ export default function BookingDashboard() {
       date: selectedDate,
       time: selectedTime,
       title: meetingTitle || "Project Sync",
-      booker: "Alex Rivers",
+      booker: "Sarah Jenkins (VP)",
       attendees: [...attendees]
     };
 
@@ -221,6 +285,36 @@ export default function BookingDashboard() {
     if (confirm(`Cancel reservation for ${booking.roomName} at ${booking.time}?`)) {
       setBookings(prev => prev.filter(b => b.id !== bookingId));
     }
+  };
+
+  // Manager Approval Workflow Handlers
+  const handleApproveRequest = (reqId: string) => {
+    const req = pendingApprovals.find(r => r.id === reqId);
+    if (!req) return;
+
+    const newBooking: Booking = {
+      id: `BK-APP-${Date.now()}`,
+      roomId: req.roomId,
+      roomName: req.roomName,
+      date: req.dateVal,
+      time: req.timeVal,
+      title: `${req.priority} Executive Sync`,
+      booker: req.requestedBy,
+      attendees: Array.from({ length: req.attendeesCount }, (_, i) => `Invitee ${i + 1}`)
+    };
+
+    setBookings(prev => {
+      const filtered = prev.filter(b => !(b.roomId === req.roomId && b.date === req.dateVal && b.time === req.timeVal));
+      return [...filtered, newBooking];
+    });
+
+    setPendingApprovals(prev => prev.filter(r => r.id !== reqId));
+  };
+
+  const handleRejectRequest = (reqId: string) => {
+    const req = pendingApprovals.find(r => r.id === reqId);
+    if (!req) return;
+    setPendingApprovals(prev => prev.filter(r => r.id !== reqId));
   };
 
   const filteredRooms = rooms.filter(room => {
@@ -239,6 +333,17 @@ export default function BookingDashboard() {
     const matchesAmenities = amenitiesFilter.every(amenity => room.amenities.includes(amenity));
 
     return matchesSearch && matchesCapacity && matchesAmenities;
+  });
+
+  const filteredApprovals = pendingApprovals.filter(req => {
+    const matchesSearch = req.roomName.toLowerCase().includes(approvalSearchQuery.toLowerCase()) ||
+                          req.requestedBy.toLowerCase().includes(approvalSearchQuery.toLowerCase());
+    const matchesFilter = approvalFilter === "all"
+      ? true
+      : approvalFilter === "vip"
+        ? req.priority === "VIP"
+        : req.attendeesCount >= 15;
+    return matchesSearch && matchesFilter;
   });
 
   const getDateName = (dateVal: string) => {
@@ -306,10 +411,13 @@ export default function BookingDashboard() {
 
       {/* SideNavBar */}
       <nav className="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface-container-low/40 backdrop-blur-xl border-r border-outline-variant/20 shadow-2xl p-gutter z-50">
-        <div className="mb-stack-lg pt-4 px-2">
+        <div className="mb-6 pt-4 px-2">
           <h1 className="font-title-md text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary tracking-tight">
             Lumina
           </h1>
+          <span className="text-[10px] text-outline uppercase tracking-widest font-semibold block mt-1">
+            Manager Suite
+          </span>
         </div>
         
         {/* Navigation Tabs */}
@@ -324,7 +432,7 @@ export default function BookingDashboard() {
               }`}
             >
               <span className="material-symbols-outlined text-[20px]" style={currentView === "rooms" ? { fontVariationSettings: "'FILL' 1" } : {}}>meeting_room</span>
-              Rooms
+              Book Room
             </button>
           </li>
 
@@ -337,25 +445,25 @@ export default function BookingDashboard() {
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
               }`}
             >
-              <span className="material-symbols-outlined text-[20px]" style={currentView === "bookings" ? { fontVariationSettings: "'FILL' 1" } : {}}>calendar_month</span>
-              Bookings
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "bookings" ? { fontVariationSettings: "'FILL' 1" } : {}}>check_box</span>
+              Approval Queue
             </button>
           </li>
         </ul>
 
-        {/* User Profile */}
+        {/* User Profile Card */}
         <div className="mt-auto pt-4 border-t border-outline-variant/20 px-2 flex items-center gap-3">
           <img 
             alt="User profile photo" 
             className="w-10 h-10 rounded-full object-cover border border-outline-variant/30" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0xNYgdcg5mdCo2E4d0WUXELauNpPz9sKAsS89TN5zvbVExdpn1p_QWn9-cDPz7kxN3K1pB-XNbU5Hg-Igmadf8pjAXULBfVypjLsjYsyNaxv6XQ2pZVg3ROccMir4PnQ4MS-K5M-D_UtcCcWIpxc7FPhoTW7NPVhBb6abVNTiz639dyIsb8RlH5ewm4TL33hUjJEQ5t6sFDHkUZZWOretc2-_lIQwPxvpCXIWpwvCB80ZlyGp68snCw7a55L2TIp8c47m5HJkTDTV"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWsxu684Zw8iwXpp-lB10J2kIwZkSYnGkRKL3VyoUVJRuSzd6jE7UYzX7ew-l-T4IqvoT8_xPYfB97fvpw5UAAr-HJe91-BR6a_ukNgFbHw2lpEhm_KuLYRmrI8T98QMLawW64PAPVts7Ad91FieBVb0Ac6T7trtjJoTJU_C-6XipnmNaIIkcNguqLzLlK6EZWAW4zrKbp034sOzAcJxKngHnL8b7U2klDs6zi1tWX-ACa2qf5G3EKH6lDM_3hIOGcvBzpKEyUzYhB"
           />
           <div className="flex flex-col">
             <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[120px]">
-              Alex Rivers
+              Sarah Jenkins
             </span>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
-              Premium Member
+            <span className="font-label-sm text-label-sm text-on-surface-variant text-[11px] truncate">
+              VP Operations
             </span>
           </div>
         </div>
@@ -366,9 +474,10 @@ export default function BookingDashboard() {
         {/* TopNavBar */}
         <header className="hidden md:flex fixed top-0 right-0 left-64 h-20 bg-surface/60 backdrop-blur-md border-b border-outline-variant/10 shadow-sm z-40 px-stack-lg justify-between items-center transition-all duration-300">
           <div className="flex items-center font-title-md text-title-md text-on-surface font-semibold">
-            Lumina Reserve
+            Lumina Approval Center
           </div>
           <div className="flex items-center gap-6">
+            {/* Context Search Bar */}
             {currentView === "rooms" && (
               <div className="relative w-64 group focus-within:ring-2 focus-within:ring-primary/50 rounded-full transition-all duration-300">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -384,6 +493,7 @@ export default function BookingDashboard() {
               </div>
             )}
             
+            {/* Trailing Icons */}
             <div className="flex items-center gap-2 text-on-surface-variant">
               <button 
                 onClick={toggleTheme} 
@@ -396,6 +506,10 @@ export default function BookingDashboard() {
                 <span className="material-symbols-outlined">notifications</span>
                 <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
               </button>
+              <div className="w-px h-6 bg-white/20"></div>
+              <span className="font-label-sm text-xs font-semibold text-outline tracking-wider bg-surface-container-high px-3 py-1.5 rounded-full border border-outline-variant/20 uppercase">
+                Manager
+              </span>
             </div>
           </div>
         </header>
@@ -403,80 +517,155 @@ export default function BookingDashboard() {
         {/* Dynamic Content Views */}
         <div className="flex-1 mt-0 md:mt-20 overflow-y-auto">
           
-          {/* VIEW: ROOMS BOOKING LIST */}
+          {/* VIEW: APPROVAL QUEUE */}
           {currentView === "bookings" && (
-            <main className="p-stack-lg max-w-[1440px] mx-auto w-full">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
-                <div>
-                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface">Active Reservations</h1>
-                  <p className="font-body-md text-on-surface-variant mt-1">Confirmed and ongoing room schedules in the workspace.</p>
-                </div>
-                <button 
-                  onClick={() => setCurrentView("rooms")}
-                  className="px-4 py-2 btn-gradient-primary text-white text-sm rounded-lg flex items-center gap-2 hover:shadow-lg transition-all"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span> New Booking
-                </button>
+            <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+              <div className="flex flex-col gap-1 pt-2">
+                <h1 className="font-headline-xl text-3xl font-black text-on-surface tracking-tight">Approval Queue</h1>
+                <p className="font-body-md text-on-surface-variant max-w-2xl">Review and manage pending facility requests. High-priority requests from executive teams are highlighted.</p>
               </div>
 
-              {bookings.length === 0 ? (
-                <div className="glass-panel rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
-                  <span className="material-symbols-outlined text-outline text-5xl">event_busy</span>
-                  <h3 className="font-headline-md text-lg font-bold text-on-surface">No Active Bookings</h3>
-                  <p className="text-xs text-on-surface-variant max-w-sm">No reservations exist in the system yet. Click below to book a room.</p>
-                </div>
-              ) : (
-                <div className="glass-panel rounded-xl overflow-hidden shadow-lg">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[700px]">
-                      <thead>
-                        <tr className="bg-white/[0.02] border-b border-white/5 font-label-sm text-xs text-on-surface-variant uppercase tracking-wider">
-                          <th className="p-4 font-semibold">Booking ID</th>
-                          <th className="p-4 font-semibold">Room Name</th>
-                          <th className="p-4 font-semibold">Schedule</th>
-                          <th className="p-4 font-semibold">Title</th>
-                          <th className="p-4 font-semibold">Reserved By</th>
-                          <th className="p-4 font-semibold text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="font-body-md text-sm divide-y divide-white/5">
-                        {bookings.map((booking) => (
-                          <tr key={booking.id} className="hover:bg-white/[0.01] transition-colors">
-                            <td className="p-4 font-mono text-xs text-outline">{booking.id}</td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-tertiary dot-available"></span>
-                                <span className="font-bold text-on-surface">{booking.roomName}</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-xs font-semibold text-on-surface-variant">
-                              Jun {booking.date} · {booking.time} - {getEndTime(booking.time)}
-                            </td>
-                            <td className="p-4 text-on-surface-variant font-medium">{booking.title}</td>
-                            <td className="p-4">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-xs font-semibold text-on-surface">
-                                {booking.booker}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right">
-                              <button 
-                                onClick={() => handleCancelBooking(booking.id)}
-                                className="text-xs font-semibold text-error hover:underline bg-error/5 hover:bg-error/10 px-3 py-1.5 rounded-lg border border-error/15 transition-all"
-                              >
-                                Cancel
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              {/* Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+                <div className="bg-surface-container border border-outline-variant/20 rounded-xl p-5 flex flex-col gap-1 relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <span className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider">Pending Approvals</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="font-headline-lg text-3xl font-bold text-on-surface">{pendingApprovals.length}</span>
+                    <span className="font-body-sm text-xs text-error flex items-center gap-0.5 font-semibold">
+                      <span className="material-symbols-outlined text-[14px]">priority_high</span> 
+                      {pendingApprovals.filter(x => x.priority === "VIP").length} Urgent
+                    </span>
                   </div>
                 </div>
-              )}
+                <div className="bg-surface-container border border-outline-variant/20 rounded-xl p-5 flex flex-col gap-1">
+                  <span className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider">Processed Today</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="font-headline-lg text-3xl font-bold text-on-surface">14</span>
+                    <span className="font-body-sm text-xs text-tertiary flex items-center gap-0.5 font-semibold">
+                      <span className="material-symbols-outlined text-[14px]">check_circle</span> 100% rate
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters & Controls */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-md bg-surface-container p-4 rounded-xl border border-outline-variant/20">
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setApprovalFilter("all")}
+                    className={`px-4 py-1.5 rounded-full font-label-sm text-xs border transition-colors ${
+                      approvalFilter === "all" 
+                        ? 'bg-surface-variant text-on-surface border-outline-variant/30 font-semibold' 
+                        : 'bg-transparent text-on-surface-variant border-transparent hover:bg-surface-variant/40'
+                    }`}
+                  >
+                    All Requests
+                  </button>
+                  <button 
+                    onClick={() => setApprovalFilter("vip")}
+                    className={`px-4 py-1.5 rounded-full font-label-sm text-xs border transition-colors ${
+                      approvalFilter === "vip" 
+                        ? 'bg-surface-variant text-on-surface border-outline-variant/30 font-semibold' 
+                        : 'bg-transparent text-on-surface-variant border-transparent hover:bg-surface-variant/40'
+                    }`}
+                  >
+                    VIP Priority
+                  </button>
+                  <button 
+                    onClick={() => setApprovalFilter("large")}
+                    className={`px-4 py-1.5 rounded-full font-label-sm text-xs border transition-colors ${
+                      approvalFilter === "large" 
+                        ? 'bg-surface-variant text-on-surface border-outline-variant/30 font-semibold' 
+                        : 'bg-transparent text-on-surface-variant border-transparent hover:bg-surface-variant/40'
+                    }`}
+                  >
+                    Large Groups
+                  </button>
+                </div>
+                <div className="relative w-full sm:w-auto">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                  <input 
+                    value={approvalSearchQuery}
+                    onChange={(e) => setApprovalSearchQuery(e.target.value)}
+                    className="w-full sm:w-64 bg-surface dark:bg-surface-dim border border-outline-variant/30 rounded-lg pl-9 pr-4 py-2 font-body-sm text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" 
+                    placeholder="Search requests..." 
+                    type="text"
+                  />
+                </div>
+              </div>
+
+              {/* Request Cards Listing */}
+              <div className="flex flex-col gap-4">
+                {filteredApprovals.length === 0 ? (
+                  <div className="glass-panel rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
+                    <span className="material-symbols-outlined text-tertiary text-5xl">task_alt</span>
+                    <h3 className="font-headline-md text-lg font-bold text-on-surface">Queue Caught Up</h3>
+                    <p className="text-xs text-on-surface-variant max-w-sm">There are no pending room reservation requests requiring approval right now.</p>
+                  </div>
+                ) : (
+                  filteredApprovals.map((request) => {
+                    const isVIP = request.priority === "VIP";
+                    return (
+                      <div 
+                        key={request.id} 
+                        className={`bg-surface-container rounded-xl border p-5 flex flex-col lg:flex-row gap-4 lg:items-center relative overflow-hidden transition-all shadow-md ${
+                          isVIP 
+                            ? 'border-error/30 hover:border-error/50 shadow-inner' 
+                            : 'border-outline-variant/20 hover:border-outline-variant/40'
+                        }`}
+                      >
+                        {isVIP && <div className="absolute top-0 left-0 w-1.5 h-full bg-error"></div>}
+                        <div className="flex-1 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 border ${
+                            isVIP 
+                              ? 'bg-error/10 text-error border-error/20' 
+                              : 'bg-secondary-container text-on-secondary-container border-outline-variant/10'
+                          }`}>
+                            <span className="material-symbols-outlined">{isVIP ? 'star' : 'meeting_room'}</span>
+                          </div>
+                          <div className="flex flex-col gap-1 flex-grow">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-headline-md text-base font-bold text-on-surface">{request.roomName}</h3>
+                              <span className={`font-label-sm text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                isVIP 
+                                  ? 'bg-error/10 text-error border-error/20' 
+                                  : 'bg-surface-variant text-on-surface-variant border-outline-variant/20'
+                              }`}>
+                                {request.priority} Priority
+                              </span>
+                            </div>
+                            <p className="text-xs text-on-surface-variant">Requested by <strong className="text-on-surface">{request.requestedBy}</strong> ({request.role}) • {request.dateText}, {request.timeText}</p>
+                            <p className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-1 bg-surface-container-high/30 px-2 py-1 rounded w-fit border border-outline-variant/15">
+                              <span className="material-symbols-outlined text-[14px]">groups</span> {request.attendeesCount} Attendees
+                              <span className="text-outline">|</span>
+                              <span className="material-symbols-outlined text-[14px]">settings_input_component</span> Notes: {request.details}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 lg:ml-auto pt-3 lg:pt-0 border-t border-outline-variant/10 lg:border-none w-full lg:w-auto justify-end">
+                          <button 
+                            onClick={() => handleRejectRequest(request.id)}
+                            className="bg-transparent text-error hover:bg-error/10 font-semibold text-xs py-2 px-4 rounded-lg transition-colors border border-error/20"
+                          >
+                            Reject
+                          </button>
+                          <button 
+                            onClick={() => handleApproveRequest(request.id)}
+                            className="bg-primary hover:bg-primary/95 text-on-primary font-bold text-xs py-2 px-4 rounded-lg transition-all flex items-center gap-1 shadow-md hover:shadow-indigo-500/10"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">check</span> Approve
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </main>
           )}
 
-          {/* VIEW: ROOMS LIST / SPLIT SCREEN BOOKING */}
+          {/* VIEW: ROOMS BOOKING VIEW */}
           {currentView === "rooms" && (
             <main className="flex-1 overflow-hidden flex flex-col p-stack-lg gap-stack-lg h-full">
               {/* Search & Filter Bar */}
@@ -485,7 +674,6 @@ export default function BookingDashboard() {
                   <div className="relative w-full max-w-md">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
                     <input 
-                      id="search-input" 
                       className="w-full bg-surface-container-low/50 border border-outline-variant/30 rounded-lg py-2 pl-10 pr-4 text-on-surface placeholder-outline focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary shadow-inner transition-all font-body-md text-sm" 
                       placeholder="Find a specific room or location..." 
                       type="text"
@@ -497,14 +685,39 @@ export default function BookingDashboard() {
                 <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1">
                   <div className="flex items-center gap-2 border-r border-outline-variant/30 pr-3">
                     <span className="font-label-sm text-xs text-outline uppercase tracking-wider">Capacity</span>
-                    <button onClick={() => setCapacityFilter("2-5")} className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "2-5" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}>2-5</button>
-                    <button onClick={() => setCapacityFilter("6-12")} className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "6-12" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}>6-12</button>
-                    <button onClick={() => setCapacityFilter("12+")} className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "12+" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}>12+</button>
+                    <button 
+                      onClick={() => setCapacityFilter("2-5")}
+                      className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "2-5" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}
+                    >
+                      2-5
+                    </button>
+                    <button 
+                      onClick={() => setCapacityFilter("6-12")}
+                      className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "6-12" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}
+                    >
+                      6-12
+                    </button>
+                    <button 
+                      onClick={() => setCapacityFilter("12+")}
+                      className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "12+" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}
+                    >
+                      12+
+                    </button>
                   </div>
                   <div className="flex items-center gap-2 pl-1">
                     <span className="font-label-sm text-xs text-outline uppercase tracking-wider mr-1">Amenities</span>
-                    <button onClick={() => handleToggleAmenity("video")} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap group ${amenitiesFilter.includes("video") ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-high border-outline-variant/30 text-on-surface-variant hover:text-primary'}`}><span className="material-symbols-outlined text-[16px] group-hover:text-primary">videocam</span> Video Conf</button>
-                    <button onClick={() => handleToggleAmenity("whiteboard")} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap group ${amenitiesFilter.includes("whiteboard") ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-high border-outline-variant/30 text-on-surface-variant hover:text-primary'}`}><span className="material-symbols-outlined text-[16px] group-hover:text-primary">desktop_windows</span> Whiteboard</button>
+                    <button 
+                      onClick={() => handleToggleAmenity("video")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap group ${amenitiesFilter.includes("video") ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-high border-outline-variant/30 text-on-surface-variant hover:text-primary'}`}
+                    >
+                      <span className="material-symbols-outlined text-[16px] group-hover:text-primary">videocam</span> Video Conf
+                    </button>
+                    <button 
+                      onClick={() => handleToggleAmenity("whiteboard")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap group ${amenitiesFilter.includes("whiteboard") ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-high border-outline-variant/30 text-on-surface-variant hover:text-primary'}`}
+                    >
+                      <span className="material-symbols-outlined text-[16px] group-hover:text-primary">desktop_windows</span> Whiteboard
+                    </button>
                   </div>
                 </div>
               </div>
@@ -533,8 +746,12 @@ export default function BookingDashboard() {
                               isMaint ? 'border-red-500/20 bg-red-950/5 opacity-80' : isSelected ? 'card-active-glow border-primary' : 'border-outline-variant/30'
                             }`}
                           >
+                            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                             <div className="relative w-full aspect-video">
-                              <div className={`bg-cover bg-center w-full h-full ${isMaint ? 'grayscale' : ''}`} style={{ backgroundImage: `url('${room.image}')` }}></div>
+                              <div 
+                                className={`bg-cover bg-center w-full h-full ${isMaint ? 'grayscale' : ''}`} 
+                                style={{ backgroundImage: `url('${room.image}')` }}
+                              ></div>
                               <div className="absolute top-3 left-3 flex items-center gap-2 bg-background/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-outline-variant/30 shadow-lg">
                                 <div className={`w-2 h-2 rounded-full ${isMaint ? 'bg-secondary animate-pulse' : 'bg-tertiary dot-available'}`}></div>
                                 <span className={`font-label-sm text-[11px] ${isMaint ? 'text-secondary' : 'text-tertiary'} font-semibold`}>
@@ -555,11 +772,12 @@ export default function BookingDashboard() {
                               <div className="mt-auto pt-3 border-t border-outline-variant/20 flex gap-2">
                                 {room.amenities.map((amenity) => {
                                   let icon = 'videocam';
-                                  if (amenity === 'whiteboard') icon = 'desktop_windows';
-                                  if (amenity === 'projector') icon = 'cast';
-                                  if (amenity === 'tv') icon = 'tv';
+                                  let title = 'Video Conferencing';
+                                  if (amenity === 'whiteboard') { icon = 'desktop_windows'; title = 'Whiteboard'; }
+                                  if (amenity === 'projector') { icon = 'cast'; title = 'Projector'; }
+                                  if (amenity === 'tv') { icon = 'tv'; title = 'Smart Screen'; }
                                   return (
-                                    <div key={amenity} className="p-1.5 rounded bg-surface-container-high text-on-surface-variant group-hover:text-primary transition-colors">
+                                    <div key={amenity} className="p-1.5 rounded bg-surface-container-high text-on-surface-variant group-hover:text-primary transition-colors" title={title}>
                                       <span className="material-symbols-outlined text-[18px]">{icon}</span>
                                     </div>
                                   );
@@ -573,6 +791,7 @@ export default function BookingDashboard() {
                   </div>
                 </section>
 
+                {/* RIGHT COLUMN: Booking Panel */}
                 <aside className="lg:w-[40%] flex flex-col h-full bg-surface-container-low/40 backdrop-blur-xl rounded-2xl border border-outline-variant/20 shadow-2xl overflow-hidden relative">
                   <div className="h-1 w-full bg-gradient-to-r from-primary via-secondary to-primary-container"></div>
                   <div className="p-5 overflow-y-auto flex-1 flex flex-col gap-6 hide-scrollbar relative">
@@ -587,16 +806,19 @@ export default function BookingDashboard() {
                       <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-2 -mx-2 px-2">
                         {["22", "23", "24", "25", "26"].map((d) => {
                           const isActive = selectedDate === d;
+                          const dayName = d === "22" ? "Mon" : d === "23" ? "Tue" : d === "24" ? "Wed" : d === "25" ? "Thu" : "Fri";
                           return (
                             <button 
                               key={d}
                               onClick={() => setSelectedDate(d)}
                               className={isActive 
-                                ? "flex flex-col items-center justify-center min-w-[72px] py-3.5 px-2 rounded-xl bg-gradient-to-b from-primary-container/20 to-primary/10 border-2 border-primary text-primary shadow-lg transform scale-105 transition-all relative font-bold"
+                                ? "flex flex-col items-center justify-center min-w-[72px] py-3.5 px-2 rounded-xl bg-gradient-to-b from-primary-container/20 to-primary/10 border-2 border-primary text-primary shadow-[0_4px_12px_rgba(192,193,255,0.15)] transform scale-105 transition-all relative font-bold"
                                 : "flex flex-col items-center justify-center min-w-[64px] py-3 px-2 rounded-xl border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest transition-all duration-200"
                               }
                             >
-                              <span className="font-title-md text-sm font-bold">{d}</span>
+                              <span className={isActive ? "font-label-sm text-[10px] uppercase tracking-widest text-primary-fixed" : "font-label-sm text-[10px] uppercase tracking-widest text-outline"}>{dayName}</span>
+                              <span className="font-title-md text-sm font-bold mt-1">{d}</span>
+                              {isActive && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-full shadow-[0_0_8px_rgba(192,193,255,0.8)]"></div>}
                             </button>
                           );
                         })}
@@ -615,28 +837,48 @@ export default function BookingDashboard() {
                             
                             if (isMaintenance) {
                               return (
-                                <button key={slot.time} disabled className="py-2.5 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">
+                                <button 
+                                  key={slot.time}
+                                  disabled
+                                  className="py-2.5 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed relative group overflow-hidden"
+                                >
                                   <span>Maint</span>
+                                  <div className="absolute inset-0 bg-background/85 hidden group-hover:flex items-center justify-center text-[10px] text-outline font-normal">Maintenance</div>
                                 </button>
                               );
                             }
 
                             if (isBooked) {
                               return (
-                                <button key={slot.time} disabled className="py-2.5 rounded-lg border border-outline-variant/30 bg-surface-container-highest text-on-surface-variant font-label-md text-xs opacity-40 cursor-not-allowed">
+                                <button 
+                                  key={slot.time}
+                                  disabled
+                                  className="py-2.5 rounded-lg border border-outline-variant/30 bg-surface-container-highest text-on-surface-variant font-label-md text-xs opacity-40 cursor-not-allowed relative group overflow-hidden"
+                                  title={`Booked by ${slot.booker}`}
+                                >
                                   <span className="line-through">{slot.time}</span>
+                                  <div className="absolute inset-0 bg-background/85 hidden group-hover:flex items-center justify-center text-[10px] text-outline font-normal">Booked</div>
                                 </button>
                               );
                             }
                             
                             const isSelected = selectedTime === slot.time;
-                            let btnClass = "py-2.5 rounded-lg border border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20 transition-colors font-label-md text-xs font-semibold";
+                            let btnClass = "py-2.5 rounded-lg border border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20 transition-colors font-label-md text-xs shadow-[inset_0_0_8px_rgba(78,222,163,0.1)] font-semibold";
+                            
                             if (isSelected) {
-                              btnClass = "py-2.5 rounded-lg bg-gradient-to-r from-primary-container to-secondary-container text-white font-label-md text-xs shadow-lg border border-primary font-bold scale-105 transform transition-transform";
+                              btnClass = "py-2.5 rounded-lg bg-gradient-to-r from-primary-container to-secondary-container text-white font-label-md text-xs shadow-[0_0_15px_rgba(128,131,255,0.4)] border border-primary font-bold scale-105 transform transition-transform";
+                            } else if (slot.status === "warning") {
+                              btnClass = "py-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 font-label-md text-xs relative group hover:bg-amber-500/20 transition-colors font-semibold";
                             }
+                            
                             return (
-                              <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={btnClass}>
+                              <button 
+                                key={slot.time}
+                                onClick={() => handleTimeSlotClick(slot.time)}
+                                className={btnClass}
+                              >
                                 {slot.time}
+                                {slot.status === "warning" && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>}
                               </button>
                             );
                           })}
@@ -647,7 +889,40 @@ export default function BookingDashboard() {
                     <div className="flex flex-col gap-4 mt-2">
                       <div className="relative">
                         <label className="absolute -top-2 left-3 bg-surface-container-low px-1 font-label-sm text-[10px] text-primary z-10 font-semibold">Meeting Title</label>
-                        <input className="w-full bg-surface-container-highest/30 border border-primary/50 rounded-lg py-3 px-4 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary shadow-inner font-body-md text-sm transition-shadow" type="text" value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)}/>
+                        <input 
+                          className="w-full bg-surface-container-highest/30 border border-primary/50 rounded-lg py-3 px-4 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary shadow-inner font-body-md text-sm transition-shadow" 
+                          type="text" 
+                          value={meetingTitle}
+                          onChange={(e) => setMeetingTitle(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="relative">
+                        <label className="absolute -top-2 left-3 bg-surface-container-low px-1 font-label-sm text-[10px] text-outline z-10 font-semibold">Attendees</label>
+                        <div className="w-full min-h-[48px] bg-surface-container-highest/30 border border-outline-variant/40 rounded-lg py-2 px-3 flex flex-wrap gap-2 items-center focus-within:border-primary/50 transition-colors shadow-inner">
+                          <div className="flex flex-wrap gap-2 items-center">
+                            {attendees.map((att, idx) => (
+                              <span key={idx} className="flex items-center gap-1 bg-surface-container px-2 py-1 rounded border border-outline-variant/30 font-label-sm text-[11px] text-on-surface font-semibold">
+                                {att}
+                                <button 
+                                  type="button" 
+                                  onClick={() => handleRemoveAttendee(idx)}
+                                  className="text-outline hover:text-error material-symbols-outlined text-[14px]"
+                                >
+                                  close
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                          <input 
+                            className="bg-transparent border-none p-0 focus:ring-0 text-xs text-on-surface placeholder-outline flex-1 min-w-[100px] outline-none" 
+                            placeholder="Add more..." 
+                            type="text"
+                            value={attendeeInput}
+                            onChange={(e) => setAttendeeInput(e.target.value)}
+                            onKeyDown={handleAddAttendee}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -655,7 +930,9 @@ export default function BookingDashboard() {
                   <div className="p-5 border-t border-outline-variant/20 bg-surface-container-low/80 backdrop-blur-md mt-auto shrink-0 z-10">
                     <div className="flex justify-between items-center mb-4 text-xs">
                       <span className="text-outline font-label-sm font-semibold">{selectedRoom.name} Room</span>
-                      <span className="text-on-surface font-label-md font-semibold">{getDateName(selectedDate)} • {selectedTime}</span>
+                      <span className="text-on-surface font-label-md font-semibold">
+                        {getDateName(selectedDate)} • {selectedTime} - {getEndTime(selectedTime)}
+                      </span>
                     </div>
                     
                     <button 
@@ -667,7 +944,9 @@ export default function BookingDashboard() {
                           : "btn-gradient-primary"
                       }`}
                     >
-                      {isSelectedRoomMaintenance ? "Room Under Maintenance" : "Confirm Booking"}
+                      {isSelectedRoomMaintenance 
+                        ? "Room Under Maintenance" 
+                        : "Confirm Booking"}
                       <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                     </button>
                   </div>
@@ -693,10 +972,17 @@ export default function BookingDashboard() {
             </p>
             <div className="w-full bg-surface-container-low/50 border border-outline-variant/20 rounded-xl p-4 mb-6 text-left text-xs flex flex-col gap-2">
               <div className="flex justify-between"><span className="text-outline">Room:</span><span className="font-bold text-on-surface">{selectedRoom.name}</span></div>
-              <div className="flex justify-between"><span className="text-outline">Date & Time:</span><span className="text-on-surface">{getDateName(selectedDate)} • {selectedTime}</span></div>
+              <div className="flex justify-between"><span className="text-outline">Date & Time:</span><span className="text-on-surface">{getDateName(selectedDate)} • {selectedTime} - {getEndTime(selectedTime)}</span></div>
               <div className="flex justify-between"><span className="text-outline">Title:</span><span className="text-on-surface">{meetingTitle || "Project Sync"}</span></div>
+              <div className="flex justify-between"><span className="text-outline">Reserved By:</span><span className="text-on-surface font-semibold">Sarah Jenkins (VP)</span></div>
+              <div className="flex justify-between"><span className="text-outline">Attendees:</span><span className="text-on-surface">{attendees.length > 0 ? attendees.join(", ") : "None"}</span></div>
             </div>
-            <button onClick={() => setIsSuccessModalOpen(false)} className="w-full py-3 rounded-xl btn-gradient-primary text-white font-title-md text-sm font-bold shadow-lg">Done</button>
+            <button 
+              onClick={() => setIsSuccessModalOpen(false)}
+              className="w-full py-3 rounded-xl btn-gradient-primary text-white font-title-md text-sm font-bold shadow-lg"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

@@ -23,9 +23,19 @@ interface Booking {
   attendees: string[];
 }
 
-export default function BookingDashboard() {
-  const role = "user";
-  const [currentView, setCurrentView] = useState<string>("rooms"); // "rooms" | "bookings"
+interface AuditLog {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  code: string;
+  icon: string;
+  iconColor: string;
+}
+
+export default function AdminPortal() {
+  const role = "admin";
+  const [currentView, setCurrentView] = useState<string>("dashboard"); // "dashboard" | "rooms" | "audit"
 
   // Unified reactive mock database state
   const [rooms, setRooms] = useState<Room[]>([
@@ -119,6 +129,36 @@ export default function BookingDashboard() {
     }
   ]);
 
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
+    {
+      id: "LOG-001",
+      title: "Beta Lab status changed",
+      description: "Admin.01 set status to Maintenance",
+      time: "10:42 AM",
+      code: "ID-8492",
+      icon: "build",
+      iconColor: "text-secondary"
+    },
+    {
+      id: "LOG-002",
+      title: "New resource provisioned",
+      description: "System auto-scaled 'Virtual Instance X1'",
+      time: "09:15 AM",
+      code: "SYS-AUTO",
+      icon: "add",
+      iconColor: "text-primary"
+    },
+    {
+      id: "LOG-003",
+      title: "Admin authenticated",
+      description: "Session established from IP 192.168.1.45",
+      time: "08:00 AM",
+      code: "SEC-LOGIN",
+      icon: "login",
+      iconColor: "text-tertiary"
+    }
+  ]);
+
   // UI state for standard Booking panel
   const [selectedRoomId, setSelectedRoomId] = useState<string>("olympus");
   const [selectedDate, setSelectedDate] = useState<string>("23");
@@ -131,6 +171,29 @@ export default function BookingDashboard() {
   const [attendeeInput, setAttendeeInput] = useState<string>("");
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // Admin Dashboard Resource Matrix filtering and editing states
+  const [locateQuery, setLocateQuery] = useState<string>("");
+  const [isEditRoomModalOpen, setIsEditRoomModalOpen] = useState<boolean>(false);
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [editRoomName, setEditRoomName] = useState<string>("");
+  const [editRoomSeats, setEditRoomSeats] = useState<number>(10);
+
+  // Add system operation logs helper
+  const addAuditLog = (title: string, description: string, code = "SYS-OP", icon = "info", iconColor = "text-primary") => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newLog: AuditLog = {
+      id: `LOG-${Date.now()}`,
+      title,
+      description,
+      time: timeStr,
+      code,
+      icon,
+      iconColor
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+  };
 
   // Initialize and Toggle Theme
   useEffect(() => {
@@ -183,22 +246,44 @@ export default function BookingDashboard() {
   );
   const isSelectedRoomMaintenance = selectedRoom.status === "maintenance";
 
-  // Booking confirm handler
+  // Booking confirm handler with Admin Preemption override logic
   const handleConfirmBooking = () => {
-    if (selectedRoom.status === "maintenance") {
-      alert("This room is currently under maintenance and cannot be booked.");
-      return;
-    }
-
     const isBooked = bookings.some(
       b => b.roomId === selectedRoom.id && b.date === selectedDate && b.time === selectedTime
     );
 
     if (isBooked) {
-      alert("This slot is already booked. Please select an available slot.");
+      // Preempt existing user booking
+      const existingBooking = bookings.find(
+        b => b.roomId === selectedRoom.id && b.date === selectedDate && b.time === selectedTime
+      );
+      
+      setBookings(prev => prev.filter(b => b.id !== existingBooking?.id));
+      
+      const newBooking: Booking = {
+        id: `BK-${Date.now()}`,
+        roomId: selectedRoom.id,
+        roomName: selectedRoom.name,
+        date: selectedDate,
+        time: selectedTime,
+        title: meetingTitle || "Admin Override Session",
+        booker: "Admin.01 (SysOps)",
+        attendees: [...attendees]
+      };
+
+      setBookings(prev => [...prev, newBooking]);
+      addAuditLog(
+        "Admin preempted booking",
+        `Admin overridden ${existingBooking?.booker || "user"}'s reservation for ${selectedRoom.name}`,
+        "ADM-OVR",
+        "gavel",
+        "text-error"
+      );
+      setIsSuccessModalOpen(true);
       return;
     }
 
+    // Standard Direct Booking
     const newBooking: Booking = {
       id: `BK-${Date.now()}`,
       roomId: selectedRoom.id,
@@ -206,11 +291,18 @@ export default function BookingDashboard() {
       date: selectedDate,
       time: selectedTime,
       title: meetingTitle || "Project Sync",
-      booker: "Alex Rivers",
+      booker: "Admin.01 (SysOps)",
       attendees: [...attendees]
     };
 
     setBookings(prev => [...prev, newBooking]);
+    addAuditLog(
+      "Admin booked room",
+      `Admin.01 booked ${selectedRoom.name} directly`,
+      "ADM-BOOK",
+      "add_circle",
+      "text-primary"
+    );
     setIsSuccessModalOpen(true);
   };
 
@@ -220,7 +312,33 @@ export default function BookingDashboard() {
 
     if (confirm(`Cancel reservation for ${booking.roomName} at ${booking.time}?`)) {
       setBookings(prev => prev.filter(b => b.id !== bookingId));
+      addAuditLog(
+        "Booking Cancelled",
+        `Cancelled reservation for ${booking.roomName} by ${booking.booker}`,
+        "SYS-CANCEL",
+        "delete",
+        "text-error"
+      );
     }
+  };
+
+  const handleToggleMaintenance = (roomId: string) => {
+    setRooms(prev =>
+      prev.map(r => {
+        if (r.id === roomId) {
+          const nextStatus = r.status === "online" ? "maintenance" : "online";
+          addAuditLog(
+            `${r.name} status changed`,
+            `Admin set status to ${nextStatus === "online" ? "Online" : "Maintenance"}`,
+            "ADM-MAINT",
+            "build",
+            nextStatus === "online" ? "text-tertiary" : "text-secondary"
+          );
+          return { ...r, status: nextStatus };
+        }
+        return r;
+      })
+    );
   };
 
   const filteredRooms = rooms.filter(room => {
@@ -240,6 +358,11 @@ export default function BookingDashboard() {
 
     return matchesSearch && matchesCapacity && matchesAmenities;
   });
+
+  const filteredRoomsMatrix = rooms.filter(r =>
+    r.name.toLowerCase().includes(locateQuery.toLowerCase()) ||
+    r.location.toLowerCase().includes(locateQuery.toLowerCase())
+  );
 
   const getDateName = (dateVal: string) => {
     switch (dateVal) {
@@ -298,6 +421,10 @@ export default function BookingDashboard() {
     }
   };
 
+  const onlineRoomsCount = rooms.filter(r => r.status === "online").length;
+  const maintenanceRoomsCount = rooms.filter(r => r.status === "maintenance").length;
+  const globalOccupancyPercentage = Math.round((bookings.length / (rooms.length * 8)) * 100);
+
   return (
     <div className="flex-1 flex overflow-hidden bg-background text-on-surface">
       {/* Ambient Background Lighting */}
@@ -306,14 +433,31 @@ export default function BookingDashboard() {
 
       {/* SideNavBar */}
       <nav className="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface-container-low/40 backdrop-blur-xl border-r border-outline-variant/20 shadow-2xl p-gutter z-50">
-        <div className="mb-stack-lg pt-4 px-2">
+        <div className="mb-6 pt-4 px-2">
           <h1 className="font-title-md text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary tracking-tight">
             Lumina
           </h1>
+          <span className="text-[10px] text-outline uppercase tracking-widest font-semibold block mt-1">
+            System Admin Suite
+          </span>
         </div>
         
         {/* Navigation Tabs */}
         <ul className="flex flex-col gap-stack-sm flex-1 mt-4">
+          <li>
+            <button 
+              onClick={() => setCurrentView("dashboard")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
+                currentView === "dashboard" 
+                  ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "dashboard" ? { fontVariationSettings: "'FILL' 1" } : {}}>dashboard</span>
+              Telemetry
+            </button>
+          </li>
+
           <li>
             <button 
               onClick={() => setCurrentView("rooms")}
@@ -324,38 +468,38 @@ export default function BookingDashboard() {
               }`}
             >
               <span className="material-symbols-outlined text-[20px]" style={currentView === "rooms" ? { fontVariationSettings: "'FILL' 1" } : {}}>meeting_room</span>
-              Rooms
+              Book Room (Ovr)
             </button>
           </li>
 
           <li>
             <button 
-              onClick={() => setCurrentView("bookings")}
+              onClick={() => setCurrentView("audit")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
-                currentView === "bookings" 
+                currentView === "audit" 
                   ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
               }`}
             >
-              <span className="material-symbols-outlined text-[20px]" style={currentView === "bookings" ? { fontVariationSettings: "'FILL' 1" } : {}}>calendar_month</span>
-              Bookings
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "audit" ? { fontVariationSettings: "'FILL' 1" } : {}}>history</span>
+              Audit Trail
             </button>
           </li>
         </ul>
 
-        {/* User Profile */}
+        {/* User Profile Card */}
         <div className="mt-auto pt-4 border-t border-outline-variant/20 px-2 flex items-center gap-3">
           <img 
             alt="User profile photo" 
             className="w-10 h-10 rounded-full object-cover border border-outline-variant/30" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0xNYgdcg5mdCo2E4d0WUXELauNpPz9sKAsS89TN5zvbVExdpn1p_QWn9-cDPz7kxN3K1pB-XNbU5Hg-Igmadf8pjAXULBfVypjLsjYsyNaxv6XQ2pZVg3ROccMir4PnQ4MS-K5M-D_UtcCcWIpxc7FPhoTW7NPVhBb6abVNTiz639dyIsb8RlH5ewm4TL33hUjJEQ5t6sFDHkUZZWOretc2-_lIQwPxvpCXIWpwvCB80ZlyGp68snCw7a55L2TIp8c47m5HJkTDTV"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnVJTXswVsQMnFZD5tboq9kccdPTM8n6rfrYc-y--H8jSR2OkiDDJfDqSprDH2fLxcGOb6ZvanDwmonHIfakUxdVjZ2kR0yR_6ejModzla6fQncsi2N71lOqZlVW5APwL5RgI9WEDK4Wac_ocm51h404B8rJowzI-PlxIMhxr_XBnKLkvWR2C4SwGEz6rmTysomrLm7WJeKBCPdzl_hxuBgV8qyfJVg_TSdT8vqHrVWAb1UIK27zCmaT3r5D7Pn2-aufRP16gyZWWT"
           />
           <div className="flex flex-col">
             <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[120px]">
-              Alex Rivers
+              Admin.01
             </span>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
-              Premium Member
+            <span className="font-label-sm text-label-sm text-on-surface-variant text-[11px] truncate">
+              SysOps Admin
             </span>
           </div>
         </div>
@@ -366,9 +510,10 @@ export default function BookingDashboard() {
         {/* TopNavBar */}
         <header className="hidden md:flex fixed top-0 right-0 left-64 h-20 bg-surface/60 backdrop-blur-md border-b border-outline-variant/10 shadow-sm z-40 px-stack-lg justify-between items-center transition-all duration-300">
           <div className="flex items-center font-title-md text-title-md text-on-surface font-semibold">
-            Lumina Reserve
+            Lumina Control Center
           </div>
           <div className="flex items-center gap-6">
+            {/* Context Search Bar */}
             {currentView === "rooms" && (
               <div className="relative w-64 group focus-within:ring-2 focus-within:ring-primary/50 rounded-full transition-all duration-300">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -384,6 +529,7 @@ export default function BookingDashboard() {
               </div>
             )}
             
+            {/* Trailing Icons */}
             <div className="flex items-center gap-2 text-on-surface-variant">
               <button 
                 onClick={toggleTheme} 
@@ -396,6 +542,10 @@ export default function BookingDashboard() {
                 <span className="material-symbols-outlined">notifications</span>
                 <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
               </button>
+              <div className="w-px h-6 bg-white/20"></div>
+              <span className="font-label-sm text-xs font-semibold text-outline tracking-wider bg-surface-container-high px-3 py-1.5 rounded-full border border-outline-variant/20 uppercase">
+                Admin
+              </span>
             </div>
           </div>
         </header>
@@ -403,89 +553,287 @@ export default function BookingDashboard() {
         {/* Dynamic Content Views */}
         <div className="flex-1 mt-0 md:mt-20 overflow-y-auto">
           
-          {/* VIEW: ROOMS BOOKING LIST */}
-          {currentView === "bookings" && (
-            <main className="p-stack-lg max-w-[1440px] mx-auto w-full">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+          {/* VIEW: TELEMETRY DASHBOARD */}
+          {currentView === "dashboard" && (
+            <main className="p-stack-lg flex flex-col gap-6 max-w-[1440px] mx-auto w-full">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
                 <div>
-                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface">Active Reservations</h1>
-                  <p className="font-body-md text-on-surface-variant mt-1">Confirmed and ongoing room schedules in the workspace.</p>
+                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+                    System Telemetry
+                    <span className="inline-flex h-3 w-3 rounded-full bg-tertiary dot-available animate-pulse"></span>
+                  </h1>
+                  <p className="font-body-md text-on-surface-variant mt-1">Real-time overview of workspace utilization, environmental controls, and administrative actions.</p>
                 </div>
-                <button 
-                  onClick={() => setCurrentView("rooms")}
-                  className="px-4 py-2 btn-gradient-primary text-white text-sm rounded-lg flex items-center gap-2 hover:shadow-lg transition-all"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span> New Booking
-                </button>
               </div>
 
-              {bookings.length === 0 ? (
-                <div className="glass-panel rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
-                  <span className="material-symbols-outlined text-outline text-5xl">event_busy</span>
-                  <h3 className="font-headline-md text-lg font-bold text-on-surface">No Active Bookings</h3>
-                  <p className="text-xs text-on-surface-variant max-w-sm">No reservations exist in the system yet. Click below to book a room.</p>
+              {/* Bento Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+                <div className="md:col-span-3 glass-panel rounded-xl p-6 flex flex-col justify-between group hover:-translate-y-0.5 transition-transform duration-300">
+                  <div className="flex justify-between items-start">
+                    <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary border border-primary/20">
+                      <span className="material-symbols-outlined">donut_large</span>
+                    </div>
+                    <span className="font-label-sm text-[12px] text-tertiary bg-tertiary/10 px-2 py-1 rounded border border-tertiary/20 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">trending_up</span> +4.2%
+                    </span>
+                  </div>
+                  <div className="mt-6">
+                    <h3 className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider mb-1">Global Occupancy</h3>
+                    <div className="font-display-xl text-4xl font-bold text-on-surface tracking-tighter">
+                      {globalOccupancyPercentage > 0 ? `${globalOccupancyPercentage}%` : "12%"}
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="glass-panel rounded-xl overflow-hidden shadow-lg">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[700px]">
+
+                <div className="md:col-span-6 glass-panel rounded-xl p-6 flex flex-col relative overflow-hidden group">
+                  <div className="flex justify-between items-center mb-6 z-10">
+                    <h3 className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">bar_chart</span>
+                      Utilization Velocity
+                    </h3>
+                    <div className="flex gap-2">
+                      <span className="w-2 h-8 bg-surface-container-high rounded-full overflow-hidden flex flex-col justify-end"><span className="w-full h-[40%] bg-outline-variant"></span></span>
+                      <span className="w-2 h-8 bg-surface-container-high rounded-full overflow-hidden flex flex-col justify-end"><span className="w-full h-[60%] bg-primary/50"></span></span>
+                      <span className="w-2 h-8 bg-surface-container-high rounded-full overflow-hidden flex flex-col justify-end"><span className="w-full h-[90%] bg-primary"></span></span>
+                      <span className="w-2 h-8 bg-surface-container-high rounded-full overflow-hidden flex flex-col justify-end"><span className="w-full h-[30%] bg-outline-variant"></span></span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 flex items-end gap-2 z-10 h-28">
+                    <div className="flex-1 bg-gradient-to-t from-primary/10 to-transparent h-[20%] rounded-t-sm border-t border-primary/20"></div>
+                    <div className="flex-1 bg-gradient-to-t from-primary/20 to-transparent h-[40%] rounded-t-sm border-t border-primary/30"></div>
+                    <div className="flex-1 bg-gradient-to-t from-primary/40 to-transparent h-[55%] rounded-t-sm border-t border-primary/40 relative transition-all duration-500"></div>
+                    <div className="flex-1 bg-gradient-to-t from-secondary/60 to-transparent h-[85%] rounded-t-sm border-t border-secondary relative transition-all duration-500">
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface-container-high px-2 py-1 rounded text-[10px] font-bold text-secondary whitespace-nowrap border border-secondary/30 shadow-lg">Peak: 14:00</div>
+                    </div>
+                    <div className="flex-1 bg-gradient-to-t from-primary/50 to-transparent h-[70%] rounded-t-sm border-t border-primary/50 relative transition-all duration-500"></div>
+                    <div className="flex-1 bg-gradient-to-t from-primary/30 to-transparent h-[50%] rounded-t-sm border-t border-primary/30"></div>
+                    <div className="flex-1 bg-gradient-to-t from-primary/10 to-transparent h-[30%] rounded-t-sm border-t border-primary/20"></div>
+                  </div>
+                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none z-0"></div>
+                </div>
+
+                <div className="md:col-span-3 glass-panel rounded-xl p-6 flex flex-col justify-between group hover:-translate-y-0.5 transition-transform duration-300 relative overflow-hidden">
+                  <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-secondary/15 blur-[40px] rounded-full pointer-events-none"></div>
+                  <div className="flex justify-between items-start z-10">
+                    <div className="w-10 h-10 rounded-lg bg-secondary-container/20 flex items-center justify-center text-secondary border border-secondary/20">
+                      <span className="material-symbols-outlined">health_and_safety</span>
+                    </div>
+                  </div>
+                  <div className="mt-6 z-10">
+                    <h3 className="font-label-sm text-xs text-on-surface-variant uppercase tracking-wider mb-1">System Integrity</h3>
+                    <div className="font-headline-lg text-2xl font-bold text-secondary">Optimal</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-tertiary dot-available"></span>
+                      <span className="text-[11px] text-on-surface-variant">{onlineRoomsCount} Rooms Online · {maintenanceRoomsCount} Maint</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resource Matrix */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter mt-2">
+                <div className="lg:col-span-8 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[400px]">
+                  <div className="p-5 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02]">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">meeting_room</span>
+                      <h2 className="font-headline-md text-lg font-semibold">Resource Matrix</h2>
+                    </div>
+                    <div className="flex gap-3 w-full sm:w-auto">
+                      <div className="relative flex-1 sm:w-64 rounded-lg">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                        <input 
+                          value={locateQuery}
+                          onChange={(e) => setLocateQuery(e.target.value)}
+                          className="w-full bg-surface-container-high/50 border border-white/10 text-on-surface text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none placeholder:text-on-surface-variant/50 backdrop-blur-md" 
+                          placeholder="Locate resource..." 
+                          type="text"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
                       <thead>
                         <tr className="bg-white/[0.02] border-b border-white/5 font-label-sm text-xs text-on-surface-variant uppercase tracking-wider">
-                          <th className="p-4 font-semibold">Booking ID</th>
-                          <th className="p-4 font-semibold">Room Name</th>
-                          <th className="p-4 font-semibold">Schedule</th>
-                          <th className="p-4 font-semibold">Title</th>
-                          <th className="p-4 font-semibold">Reserved By</th>
+                          <th className="p-4 font-semibold w-12">#</th>
+                          <th className="p-4 font-semibold">Designation</th>
+                          <th className="p-4 font-semibold">Capacity</th>
+                          <th className="p-4 font-semibold">Status</th>
                           <th className="p-4 font-semibold text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="font-body-md text-sm divide-y divide-white/5">
-                        {bookings.map((booking) => (
-                          <tr key={booking.id} className="hover:bg-white/[0.01] transition-colors">
-                            <td className="p-4 font-mono text-xs text-outline">{booking.id}</td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-tertiary dot-available"></span>
-                                <span className="font-bold text-on-surface">{booking.roomName}</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-xs font-semibold text-on-surface-variant">
-                              Jun {booking.date} · {booking.time} - {getEndTime(booking.time)}
-                            </td>
-                            <td className="p-4 text-on-surface-variant font-medium">{booking.title}</td>
-                            <td className="p-4">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-xs font-semibold text-on-surface">
-                                {booking.booker}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right">
-                              <button 
-                                onClick={() => handleCancelBooking(booking.id)}
-                                className="text-xs font-semibold text-error hover:underline bg-error/5 hover:bg-error/10 px-3 py-1.5 rounded-lg border border-error/15 transition-all"
-                              >
-                                Cancel
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {filteredRoomsMatrix.map((room, index) => {
+                          const isMaint = room.status === "maintenance";
+                          return (
+                            <tr key={room.id} className={`hover:bg-white/[0.02] transition-colors group ${isMaint ? 'bg-surface-container-high/20 opacity-85' : ''}`}>
+                              <td className="p-4 text-on-surface-variant font-mono">0{index + 1}</td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center border border-white/10">
+                                    <span className={`material-symbols-outlined text-[16px] ${isMaint ? 'text-secondary' : 'text-primary'}`}>
+                                      {room.seats > 15 ? 'chair_alt' : room.seats > 6 ? 'computer' : 'podcasts'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium block text-on-surface">{room.name}</span>
+                                    <span className="text-[11px] text-outline font-normal block">{room.location}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 text-on-surface-variant font-semibold">{room.seats} pax</td>
+                              <td className="p-4">
+                                {isMaint ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-semibold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_8px_rgba(208,188,255,0.8)]"></span> Maint
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-tertiary/10 border border-tertiary/20 text-tertiary text-xs font-semibold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-tertiary dot-available"></span> Online
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={() => {
+                                      setEditingRoom(room);
+                                      setEditRoomName(room.name);
+                                      setEditRoomSeats(room.seats);
+                                      setIsEditRoomModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-white/5"
+                                    title="Edit Room"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                                  </button>
+                                  <button 
+                                    onClick={() => handleToggleMaintenance(room.id)}
+                                    className={`p-1.5 rounded transition-colors ${
+                                      isMaint 
+                                        ? "text-secondary bg-secondary/10 hover:bg-secondary/20" 
+                                        : "text-on-surface-variant hover:text-secondary hover:bg-white/5"
+                                    }`}
+                                    title={isMaint ? "Clear Maintenance" : "Set Maintenance"}
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">build</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </div>
-              )}
+
+                <div className="lg:col-span-4 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[400px]">
+                  <div className="p-5 border-b border-white/10 bg-white/[0.02] flex justify-between items-center">
+                    <h2 className="font-headline-md text-lg font-semibold flex items-center gap-2">
+                      <span className="material-symbols-outlined text-outline">history</span>
+                      Audit Log
+                    </h2>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[380px]">
+                    {auditLogs.map((log, index) => (
+                      <div key={log.id} className="flex gap-4 relative">
+                        {index < auditLogs.length - 1 && (
+                          <div className="absolute left-[11px] top-6 bottom-[-20px] w-px bg-white/10"></div>
+                        )}
+                        <div className="w-6 h-6 rounded-full bg-surface-container-high border border-white/20 flex items-center justify-center shrink-0 z-10 mt-0.5">
+                          <span className={`material-symbols-outlined text-[12px] ${log.iconColor}`}>{log.icon}</span>
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-on-surface">{log.title}</div>
+                          <div className="text-[11px] text-on-surface-variant mt-0.5 leading-relaxed">{log.description}</div>
+                          <div className="text-[9px] text-outline mt-1 font-mono">{log.time} · {log.code}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-3 border-t border-white/10 text-center">
+                    <button 
+                      onClick={() => setCurrentView("audit")}
+                      className="text-xs font-semibold text-primary hover:text-primary-fixed transition-colors uppercase tracking-widest"
+                    >
+                      View Full Log
+                    </button>
+                  </div>
+                </div>
+              </div>
             </main>
           )}
 
-          {/* VIEW: ROOMS LIST / SPLIT SCREEN BOOKING */}
+          {/* VIEW: AUDIT LOGS */}
+          {currentView === "audit" && (
+            <main className="p-stack-lg max-w-[1440px] mx-auto w-full">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+                <div>
+                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface">System Audit Trail</h1>
+                  <p className="font-body-md text-on-surface-variant mt-1">Sequential records of administrative actions, room booking pre-emptions, and hardware maintenance controls.</p>
+                </div>
+                <button 
+                  onClick={() => setCurrentView("dashboard")}
+                  className="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface text-sm rounded-lg border border-white/10 flex items-center gap-2 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">arrow_back</span> Back to Telemetry
+                </button>
+              </div>
+
+              <div className="glass-panel rounded-xl p-6 flex flex-col gap-4">
+                <div className="flex justify-between items-center bg-white/[0.02] p-4 rounded-lg border border-white/5 text-xs text-outline font-semibold uppercase tracking-wider">
+                  <span>Log Details</span>
+                  <button 
+                    onClick={() => {
+                      if (confirm("Clear the audit logs history?")) {
+                        setAuditLogs([{
+                          id: `LOG-${Date.now()}`,
+                          title: "Logs Cleared",
+                          description: "Admin cleared system audit logs history",
+                          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                          code: "ADM-CLR",
+                          icon: "delete_sweep",
+                          iconColor: "text-error"
+                        }]);
+                      }
+                    }}
+                    className="text-error hover:underline flex items-center gap-1 capitalize"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span> Clear Logs
+                  </button>
+                </div>
+
+                <div className="divide-y divide-white/5">
+                  {auditLogs.map((log) => (
+                    <div key={log.id} className="py-4 flex gap-4 items-start hover:bg-white/[0.01] px-2 rounded transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center shrink-0">
+                        <span className={`material-symbols-outlined text-[16px] ${log.iconColor}`}>{log.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-on-surface">{log.title}</h4>
+                          <span className="text-[10px] text-outline font-mono bg-surface-container px-2 py-0.5 rounded">{log.code}</span>
+                        </div>
+                        <p className="text-xs text-on-surface-variant mt-1">{log.description}</p>
+                        <span className="text-[10px] text-outline font-mono block mt-2">{log.time} · System ID: {log.id}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </main>
+          )}
+
+          {/* VIEW: BOOKING EXPLORER (WITH ADMIN PRIORITY OVERRIDES) */}
           {currentView === "rooms" && (
             <main className="flex-1 overflow-hidden flex flex-col p-stack-lg gap-stack-lg h-full">
-              {/* Search & Filter Bar */}
               <div className="glass-panel rounded-xl p-4 flex flex-wrap items-center gap-4 justify-between shrink-0 shadow-lg">
                 <div className="flex items-center gap-2 flex-1 min-w-[300px]">
                   <div className="relative w-full max-w-md">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
                     <input 
-                      id="search-input" 
                       className="w-full bg-surface-container-low/50 border border-outline-variant/30 rounded-lg py-2 pl-10 pr-4 text-on-surface placeholder-outline focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary shadow-inner transition-all font-body-md text-sm" 
                       placeholder="Find a specific room or location..." 
                       type="text"
@@ -509,15 +857,14 @@ export default function BookingDashboard() {
                 </div>
               </div>
 
-              {/* Split Screen Container */}
               <div className="flex flex-col lg:flex-row gap-gutter h-full overflow-hidden">
                 <section className="lg:w-[60%] flex flex-col h-full bg-surface-container-lowest/30 rounded-2xl border border-outline-variant/10 overflow-hidden shadow-inner">
                   <div className="p-5 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low/20 shrink-0">
                     <h2 className="font-title-md text-base text-on-surface flex items-center gap-2 font-semibold">
-                      <span className="material-symbols-outlined text-primary">view_cozy</span> Room Explorer
+                      <span className="material-symbols-outlined text-primary">view_cozy</span> Room Explorer (Admin Mode)
                     </h2>
                     <span className="font-label-sm text-xs text-outline bg-surface-container py-1 px-3 rounded-full border border-outline-variant/20 font-semibold">
-                      {filteredRooms.length} Room{filteredRooms.length !== 1 ? 's' : ''} Available
+                      {filteredRooms.length} Rooms Available
                     </span>
                   </div>
                   <div className="p-5 overflow-y-auto h-full flex-1">
@@ -559,7 +906,7 @@ export default function BookingDashboard() {
                                   if (amenity === 'projector') icon = 'cast';
                                   if (amenity === 'tv') icon = 'tv';
                                   return (
-                                    <div key={amenity} className="p-1.5 rounded bg-surface-container-high text-on-surface-variant group-hover:text-primary transition-colors">
+                                    <div key={amenity} className="p-1.5 rounded bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors">
                                       <span className="material-symbols-outlined text-[18px]">{icon}</span>
                                     </div>
                                   );
@@ -579,7 +926,7 @@ export default function BookingDashboard() {
                     <div>
                       <h2 className="font-headline-lg text-2xl text-on-surface font-bold tracking-tight">Book {selectedRoom.name}</h2>
                       <p className="font-body-md text-xs text-on-surface-variant flex items-center gap-1 mt-1">
-                        <span className="material-symbols-outlined text-[18px]">event</span> Select date and time
+                        <span className="material-symbols-outlined text-[18px]">event</span> Admin Priority Override Panel
                       </p>
                     </div>
 
@@ -606,7 +953,7 @@ export default function BookingDashboard() {
                     <div className="flex flex-col gap-4">
                       <div className="bg-surface-container-lowest/50 rounded-xl border border-outline-variant/20 p-4 shadow-inner">
                         <h4 className="font-label-md text-xs text-outline mb-3 flex items-center gap-2 font-semibold">
-                          <span className="material-symbols-outlined text-[16px]">light_mode</span> Afternoon / Evening
+                          <span className="material-symbols-outlined text-[16px]">light_mode</span> Select Time Slot
                         </h4>
                         <div className="grid grid-cols-3 gap-2">
                           {selectedRoomSlots.map((slot) => {
@@ -615,16 +962,31 @@ export default function BookingDashboard() {
                             
                             if (isMaintenance) {
                               return (
-                                <button key={slot.time} disabled className="py-2.5 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">
+                                <button 
+                                  key={slot.time}
+                                  disabled
+                                  className="py-2.5 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed"
+                                >
                                   <span>Maint</span>
                                 </button>
                               );
                             }
 
                             if (isBooked) {
+                              const isSelected = selectedTime === slot.time;
                               return (
-                                <button key={slot.time} disabled className="py-2.5 rounded-lg border border-outline-variant/30 bg-surface-container-highest text-on-surface-variant font-label-md text-xs opacity-40 cursor-not-allowed">
-                                  <span className="line-through">{slot.time}</span>
+                                <button 
+                                  key={slot.time}
+                                  onClick={() => setSelectedTime(slot.time)}
+                                  className={`py-2.5 rounded-lg border relative group font-label-md text-xs transition-all font-semibold ${
+                                    isSelected 
+                                      ? "bg-gradient-to-r from-red-600 to-red-800 text-white border-red-500 scale-105 shadow-[0_0_15px_rgba(239,68,68,0.5)]" 
+                                      : "border-red-500/30 bg-red-950/10 text-red-400 hover:bg-red-950/20"
+                                  }`}
+                                  title={`Booked by ${slot.booker}. Click to override.`}
+                                >
+                                  {slot.time}
+                                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border border-background"></span>
                                 </button>
                               );
                             }
@@ -660,14 +1022,13 @@ export default function BookingDashboard() {
                     
                     <button 
                       onClick={handleConfirmBooking}
-                      disabled={isSelectedRoomMaintenance}
                       className={`w-full py-4 rounded-xl text-white font-title-md text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition-all ${
-                        isSelectedRoomMaintenance
-                          ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
+                        isSlotAlreadyBooked 
+                          ? "bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-red-500/20" 
                           : "btn-gradient-primary"
                       }`}
                     >
-                      {isSelectedRoomMaintenance ? "Room Under Maintenance" : "Confirm Booking"}
+                      {isSlotAlreadyBooked ? "Preempt Booking (Admin Priority)" : "Confirm Booking"}
                       <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                     </button>
                   </div>
@@ -688,15 +1049,46 @@ export default function BookingDashboard() {
               <span className="material-symbols-outlined text-4xl">check_circle</span>
             </div>
             <h3 className="font-headline-lg text-xl font-bold text-on-surface mb-2">Booking Confirmed!</h3>
-            <p className="font-body-md text-xs text-on-surface-variant mb-6">
-              Your meeting has been scheduled successfully.
+            <p className="font-body-md text-xs text-on-surface-variant mb-6 font-semibold">
+              Reservation logged with Admin Priority override.
             </p>
             <div className="w-full bg-surface-container-low/50 border border-outline-variant/20 rounded-xl p-4 mb-6 text-left text-xs flex flex-col gap-2">
               <div className="flex justify-between"><span className="text-outline">Room:</span><span className="font-bold text-on-surface">{selectedRoom.name}</span></div>
               <div className="flex justify-between"><span className="text-outline">Date & Time:</span><span className="text-on-surface">{getDateName(selectedDate)} • {selectedTime}</span></div>
-              <div className="flex justify-between"><span className="text-outline">Title:</span><span className="text-on-surface">{meetingTitle || "Project Sync"}</span></div>
+              <div className="flex justify-between"><span className="text-outline">Reserved By:</span><span className="text-on-surface font-semibold">Admin.01 (SysOps)</span></div>
             </div>
             <button onClick={() => setIsSuccessModalOpen(false)} className="w-full py-3 rounded-xl btn-gradient-primary text-white font-title-md text-sm font-bold shadow-lg">Done</button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Room Modal */}
+      {isEditRoomModalOpen && editingRoom && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setIsEditRoomModalOpen(false)}></div>
+          <div className="glass-panel max-w-md w-full rounded-2xl p-6 shadow-2xl relative z-10 flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
+            <h3 className="font-headline-lg text-lg font-bold text-on-surface">Edit Room Details</h3>
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-semibold text-outline">Room Designation</label>
+              <input type="text" value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)} className="w-full bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2.5 px-4 text-on-surface focus:outline-none focus:border-primary shadow-inner text-sm" />
+              <label className="text-xs font-semibold text-outline">Capacity (Pax)</label>
+              <input type="number" value={editRoomSeats} onChange={(e) => setEditRoomSeats(parseInt(e.target.value) || 1)} className="w-full bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2.5 px-4 text-on-surface focus:outline-none focus:border-primary shadow-inner text-sm" />
+            </div>
+            <div className="flex gap-3 justify-end mt-2">
+              <button onClick={() => setIsEditRoomModalOpen(false)} className="px-4 py-2 bg-transparent text-on-surface hover:bg-surface-container rounded-lg border border-outline-variant/30 text-sm font-semibold transition-colors">Cancel</button>
+              <button
+                onClick={() => {
+                  setRooms(prev =>
+                    prev.map(r => r.id === editingRoom.id ? { ...r, name: editRoomName, seats: editRoomSeats } : r)
+                  );
+                  addAuditLog("Resource updated", `Admin updated details for ${editingRoom.name}`, "ADM-EDIT", "edit", "text-primary");
+                  setIsEditRoomModalOpen(false);
+                }}
+                className="px-4 py-2 btn-gradient-primary text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </div>
       )}
