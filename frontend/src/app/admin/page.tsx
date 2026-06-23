@@ -184,7 +184,7 @@ export default function AdminPortal() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const newLog: AuditLog = {
-      id: `LOG-${Date.now()}`,
+      id: `LOG-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       title,
       description,
       time: timeStr,
@@ -789,7 +789,7 @@ export default function AdminPortal() {
                     onClick={() => {
                       if (confirm("Clear the audit logs history?")) {
                         setAuditLogs([{
-                          id: `LOG-${Date.now()}`,
+                          id: `LOG-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                           title: "Logs Cleared",
                           description: "Admin cleared system audit logs history",
                           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
