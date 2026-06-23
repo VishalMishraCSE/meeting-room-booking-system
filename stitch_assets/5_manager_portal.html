@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Manager Approval Portal | Lumina Reserve</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed-variant": "#39485a",
+                        "inverse-primary": "#494bd6",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "outline": "#908fa0",
+                        "outline-variant": "#464554",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "on-primary": "#1000a9",
+                        "secondary": "#b9c8de",
+                        "surface-container-low": "#131b2e",
+                        "tertiary-container": "#00885d",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "on-secondary-fixed": "#0d1c2d",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "secondary-fixed-dim": "#b9c8de",
+                        "secondary-container": "#39485a",
+                        "on-tertiary-fixed": "#002113",
+                        "primary-container": "#8083ff",
+                        "on-tertiary-container": "#000703",
+                        "inverse-surface": "#dae2fd",
+                        "on-secondary": "#233143",
+                        "inverse-on-surface": "#283044",
+                        "on-surface": "#dae2fd",
+                        "surface-container": "#171f33",
+                        "primary-fixed": "#e1e0ff",
+                        "on-primary-fixed": "#07006c",
+                        "surface-dim": "#0b1326",
+                        "surface-container-high": "#222a3d",
+                        "background": "#0b1326",
+                        "surface-bright": "#31394d",
+                        "on-primary-container": "#0d0096",
+                        "tertiary-fixed": "#6ffbbe",
+                        "on-background": "#dae2fd",
+                        "surface-variant": "#2d3449",
+                        "tertiary": "#4edea3",
+                        "surface-container-highest": "#2d3449",
+                        "on-surface-variant": "#c7c4d7",
+                        "surface-container-lowest": "#060e20",
+                        "on-secondary-container": "#a7b6cc",
+                        "primary": "#c0c1ff",
+                        "on-tertiary": "#003824",
+                        "secondary-fixed": "#d4e4fa",
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "surface-tint": "#c0c1ff",
+                        "surface": "#0b1326"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "40px",
+                        "grid-columns": "12",
+                        "base": "8px",
+                        "3xl": "64px",
+                        "2xl": "48px",
+                        "gutter": "24px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "sm": "8px",
+                        "margin-mobile": "16px",
+                        "xs": "4px",
+                        "lg": "24px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Outfit"],
+                        "headline-xl": ["Outfit"],
+                        "label-md": ["Outfit"],
+                        "body-sm": ["Outfit"],
+                        "label-sm": ["Outfit"],
+                        "body-md": ["Outfit"],
+                        "headline-md": ["Outfit"],
+                        "body-lg": ["Outfit"],
+                        "headline-xl-mobile": ["Outfit"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "label-md": ["14px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "label-sm": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+                        "headline-xl-mobile": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md min-h-screen flex flex-col md:flex-row antialiased">
+<!-- TopNavBar (Mobile) -->
+<header class="md:hidden bg-surface dark:bg-surface-dim font-body-md text-body-md docked full-width top-0 bg-surface-container-low dark:bg-surface-container-low flex justify-between items-center w-full px-lg h-16 sticky top-0 z-50 flat no shadows">
+<div class="flex items-center gap-sm">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">Lumina Reserve</span>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/30 transition-colors p-sm rounded-full">
+<span class="material-symbols-outlined" data-icon="dark_mode">dark_mode</span>
+</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/30 transition-colors p-sm rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border-2 border-primary">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A professional headshot of an executive in a modern corporate setting. The lighting is crisp and cool, reflecting an enterprise software environment. Deep navy and electric indigo tones predominate the background. High resolution, sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6SnwF3Ycio28ahJtdyLUFUMWESJCTxjIMq6hSpPQrw1sd0gpm_l5wmnhJzXyn7ZlFWFO9zdZq-6b8wFh7npqATI8lg_WhWdYcFGh4nU3iKlGoOCKZJbb1z-D4J9zipOm2BdoiOC-1YDccn-u_J1sgBvg14xUtd_iUvmi_cm7qlyRslKFR2th85jJsmDfJ2Ma-hm0F6u8HNqlrIwOzdKfsFUPojjGhnGKEVfqQxYSz9GLfrByqthDYZljvGeBBAmaXJ77o0pk1zRBc"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex bg-surface-container dark:bg-surface-container font-label-md text-label-md docked left-0 h-screen w-64 bg-surface-container dark:bg-surface-container-high fixed left-0 top-0 h-full flex-col p-md border-r border-outline-variant/10 flat no shadows z-40">
+<div class="flex flex-col gap-xs mb-xl">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold">L</div>
+<span class="font-headline-sm text-headline-sm font-black text-primary">Lumina Reserve</span>
+</div>
+<span class="text-on-surface-variant text-label-sm uppercase tracking-wider">Enterprise Suite</span>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-on-primary font-label-md text-label-md py-sm px-md rounded-lg mb-xl transition-colors flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+            New Booking
+        </button>
+<div class="flex flex-col gap-sm flex-1">
+<a class="flex items-center gap-md p-sm text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface hover:bg-secondary-container/50 dark:hover:bg-secondary-container/20 transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-md p-sm bg-secondary-container dark:bg-secondary-container text-on-secondary-container dark:text-on-secondary-container rounded-lg font-semibold Active: translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month" data-weight="fill" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+<span>Bookings</span>
+</a>
+<a class="flex items-center gap-md p-sm text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface hover:bg-secondary-container/50 dark:hover:bg-secondary-container/20 transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="meeting_room">meeting_room</span>
+<span>Rooms</span>
+</a>
+<a class="flex items-center gap-md p-sm text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface hover:bg-secondary-container/50 dark:hover:bg-secondary-container/20 transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="analytics">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-md p-sm text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface hover:bg-secondary-container/50 dark:hover:bg-secondary-container/20 transition-all rounded-lg group mt-auto" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-64 flex flex-col w-full max-w-[1440px] mx-auto p-margin-mobile md:p-margin-desktop gap-lg relative">
+<!-- Header Actions (Desktop) -->
+<div class="hidden md:flex justify-end items-center gap-md w-full absolute top-margin-desktop right-margin-desktop z-10">
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/30 transition-colors p-sm rounded-full">
+<span class="material-symbols-outlined" data-icon="dark_mode">dark_mode</span>
+</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/30 transition-colors p-sm rounded-full relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary cursor-pointer">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A professional headshot of an executive in a modern corporate setting. The lighting is crisp and cool, reflecting an enterprise software environment. Deep navy and electric indigo tones predominate the background. High resolution, sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWsxu684Zw8iwXpp-lB10J2kIwZkSYnGkRKL3VyoUVJRuSzd6jE7UYzX7ew-l-T4IqvoT8_xPYfB97fvpw5UAAr-HJe91-BR6a_ukNgFbHw2lpEhm_KuLYRmrI8T98QMLawW64PAPVts7Ad91FieBVb0Ac6T7trtjJoTJU_C-6XipnmNaIIkcNguqLzLlK6EZWAW4zrKbp034sOzAcJxKngHnL8b7U2klDs6zi1tWX-ACa2qf5G3EKH6lDM_3hIOGcvBzpKEyUzYhB"/>
+</div>
+</div>
+<!-- Page Header -->
+<div class="flex flex-col gap-xs pt-2">
+<h1 class="font-headline-xl text-headline-xl-mobile md:font-headline-xl md:text-headline-xl text-on-surface">Approval Queue</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Review and manage pending facility requests. High-priority requests from executive teams are highlighted.</p>
+</div>
+<!-- Metric Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+<div class="bg-surface-container border border-outline-variant/20 rounded-lg p-md flex flex-col gap-xs relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Pending Approvals</span>
+<div class="flex items-baseline gap-sm">
+<span class="font-headline-lg text-headline-lg text-on-surface">12</span>
+<span class="font-body-sm text-body-sm text-error flex items-center"><span class="material-symbols-outlined text-[16px]">arrow_upward</span> 3 urgent</span>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant/20 rounded-lg p-md flex flex-col gap-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Processed Today</span>
+<div class="flex items-baseline gap-sm">
+<span class="font-headline-lg text-headline-lg text-on-surface">45</span>
+<span class="font-body-sm text-body-sm text-tertiary flex items-center"><span class="material-symbols-outlined text-[16px]">check_circle</span> 92% rate</span>
+</div>
+</div>
+</div>
+<!-- Filters / Controls -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-md bg-surface-container p-md rounded-lg border border-outline-variant/20">
+<div class="flex gap-sm">
+<button class="bg-surface-variant text-on-surface px-md py-xs rounded-full font-label-sm text-label-sm border border-outline-variant/30 hover:bg-surface-bright transition-colors">All Requests</button>
+<button class="bg-transparent text-on-surface-variant px-md py-xs rounded-full font-label-sm text-label-sm border border-transparent hover:bg-surface-variant/50 transition-colors">VIP</button>
+<button class="bg-transparent text-on-surface-variant px-md py-xs rounded-full font-label-sm text-label-sm border border-transparent hover:bg-surface-variant/50 transition-colors">Large Groups</button>
+</div>
+<div class="relative w-full sm:w-auto">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full sm:w-64 bg-surface dark:bg-surface-dim border border-outline-variant/30 rounded-lg pl-xl pr-sm py-sm font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" placeholder="Search requests..." type="text"/>
+</div>
+</div>
+<!-- Request List -->
+<div class="flex flex-col gap-sm">
+<!-- Request Card 1 (Urgent/VIP) -->
+<div class="bg-surface-container rounded-lg border border-error/30 p-md flex flex-col lg:flex-row gap-md lg:items-center relative overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.1)] hover:border-error/50 transition-colors">
+<div class="absolute top-0 left-0 w-1 h-full bg-error"></div>
+<div class="flex-1 flex flex-col sm:flex-row gap-md items-start sm:items-center">
+<div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center text-error border border-error/20 flex-shrink-0">
+<span class="material-symbols-outlined">star</span>
+</div>
+<div class="flex flex-col gap-xs flex-1">
+<div class="flex items-center gap-sm flex-wrap">
+<h3 class="font-headline-md text-headline-md text-on-surface">Executive Boardroom A</h3>
+<span class="bg-error/10 text-error font-label-sm text-label-sm px-2 py-0.5 rounded-full border border-error/20 uppercase tracking-wider">VIP Priority</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Requested by Sarah Jenkins (VP Operations) • Tomorrow, 09:00 - 14:00</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs mt-1">
+<span class="material-symbols-outlined text-[16px]">groups</span> 12 Attendees
+                            <span class="material-symbols-outlined text-[16px] ml-sm">restaurant</span> Full Catering
+                        </p>
+</div>
+</div>
+<div class="flex items-center gap-sm lg:ml-auto pt-sm lg:pt-0 border-t border-outline-variant/10 lg:border-none w-full lg:w-auto justify-end">
+<button class="bg-transparent text-error hover:bg-error/10 font-label-md text-label-md py-sm px-md rounded-lg transition-colors border border-error/20">
+                        Reject
+                    </button>
+<button class="bg-primary hover:bg-primary/90 text-on-primary font-label-md text-label-md py-sm px-md rounded-lg transition-colors flex items-center gap-xs shadow-[0_2px_12px_rgba(99,102,241,0.2)]">
+<span class="material-symbols-outlined text-[18px]">check</span> Approve
+                    </button>
+</div>
+</div>
+<!-- Request Card 2 (Standard) -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/20 p-md flex flex-col lg:flex-row gap-md lg:items-center hover:border-outline-variant/40 transition-colors">
+<div class="flex-1 flex flex-col sm:flex-row gap-md items-start sm:items-center">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container border border-outline-variant/10 flex-shrink-0">
+<span class="material-symbols-outlined">meeting_room</span>
+</div>
+<div class="flex flex-col gap-xs flex-1">
+<div class="flex items-center gap-sm flex-wrap">
+<h3 class="font-headline-md text-headline-md text-on-surface">Collaboration Pod 3</h3>
+<span class="bg-surface-variant text-on-surface-variant font-label-sm text-label-sm px-2 py-0.5 rounded-full border border-outline-variant/20 uppercase tracking-wider">Standard</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Requested by Design Team • Oct 24, 14:00 - 16:00</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs mt-1">
+<span class="material-symbols-outlined text-[16px]">groups</span> 4 Attendees
+                            <span class="material-symbols-outlined text-[16px] ml-sm">monitor</span> AV Setup
+                        </p>
+</div>
+</div>
+<div class="flex items-center gap-sm lg:ml-auto pt-sm lg:pt-0 border-t border-outline-variant/10 lg:border-none w-full lg:w-auto justify-end">
+<button class="bg-transparent text-on-surface hover:bg-surface-variant font-label-md text-label-md py-sm px-md rounded-lg transition-colors border border-outline-variant/30">
+                        Reject
+                    </button>
+<button class="bg-primary hover:bg-primary/90 text-on-primary font-label-md text-label-md py-sm px-md rounded-lg transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">check</span> Approve
+                    </button>
+</div>
+</div>
+<!-- Request Card 3 (Standard) -->
+<div class="bg-surface-container rounded-lg border border-outline-variant/20 p-md flex flex-col lg:flex-row gap-md lg:items-center hover:border-outline-variant/40 transition-colors opacity-80">
+<div class="flex-1 flex flex-col sm:flex-row gap-md items-start sm:items-center">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container border border-outline-variant/10 flex-shrink-0">
+<span class="material-symbols-outlined">event_seat</span>
+</div>
+<div class="flex flex-col gap-xs flex-1">
+<div class="flex items-center gap-sm flex-wrap">
+<h3 class="font-headline-md text-headline-md text-on-surface">Training Room B</h3>
+<span class="bg-surface-variant text-on-surface-variant font-label-sm text-label-sm px-2 py-0.5 rounded-full border border-outline-variant/20 uppercase tracking-wider">Training</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Requested by HR Dept • Oct 26, 09:00 - 17:00</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs mt-1">
+<span class="material-symbols-outlined text-[16px]">groups</span> 25 Attendees
+                        </p>
+</div>
+</div>
+<div class="flex items-center gap-sm lg:ml-auto pt-sm lg:pt-0 border-t border-outline-variant/10 lg:border-none w-full lg:w-auto justify-end">
+<button class="bg-transparent text-on-surface hover:bg-surface-variant font-label-md text-label-md py-sm px-md rounded-lg transition-colors border border-outline-variant/30">
+                        Reject
+                    </button>
+<button class="bg-primary hover:bg-primary/90 text-on-primary font-label-md text-label-md py-sm px-md rounded-lg transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">check</span> Approve
+                    </button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

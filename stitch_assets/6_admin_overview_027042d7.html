@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>System Admin Overview - Lumina Reserve</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e1e0ff",
+                        "surface-container-lowest": "#070d1f",
+                        "inverse-primary": "#494bd6",
+                        "primary": "#c0c1ff",
+                        "outline": "#908fa0",
+                        "inverse-surface": "#dce1fb",
+                        "on-surface-variant": "#c7c4d7",
+                        "secondary": "#ddb7ff",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#001f25",
+                        "on-tertiary-fixed-variant": "#004e5a",
+                        "on-secondary-fixed": "#2c0051",
+                        "surface-container-high": "#23293c",
+                        "surface-container-low": "#151b2d",
+                        "surface-variant": "#2e3447",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "on-secondary-fixed-variant": "#6900b3",
+                        "secondary-fixed": "#f0dbff",
+                        "surface": "#0c1324",
+                        "outline-variant": "#464554",
+                        "surface-container": "#191f31",
+                        "tertiary-container": "#008395",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "background": "#0c1324",
+                        "on-background": "#dce1fb",
+                        "on-primary": "#1000a9",
+                        "surface-tint": "#c0c1ff",
+                        "on-surface": "#dce1fb",
+                        "secondary-fixed-dim": "#ddb7ff",
+                        "on-primary-container": "#0d0096",
+                        "inverse-on-surface": "#2a3043",
+                        "surface-container-highest": "#2e3447",
+                        "on-secondary-container": "#d6a9ff",
+                        "on-secondary": "#490080",
+                        "tertiary": "#2fd9f4",
+                        "on-tertiary": "#00363e",
+                        "tertiary-fixed-dim": "#2fd9f4",
+                        "secondary-container": "#6f00be",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-container": "#000608",
+                        "tertiary-fixed": "#a2eeff",
+                        "on-error": "#690005",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#07006c",
+                        "surface-dim": "#0c1324",
+                        "primary-container": "#8083ff",
+                        "surface-bright": "#33394c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "container-max": "1440px",
+                        "unit": "8px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Outfit"],
+                        "headline-lg-mobile": ["Outfit"],
+                        "body-lg": ["Outfit"],
+                        "label-sm": ["Outfit"],
+                        "headline-lg": ["Outfit"],
+                        "body-md": ["Outfit"],
+                        "display-xl": ["Outfit"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-sm": ["13px", { "lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg": ["40px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "display-xl": ["64px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid;
+            border-image: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%) 1;
+            box-shadow: inset 0px 1px 0px 0px rgba(255,255,255,0.1), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .glass-panel-light {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .neon-border-focus:focus-within {
+            border-color: #c0c1ff;
+            box-shadow: 0 0 10px rgba(192, 193, 255, 0.3), inset 0px 1px 0px 0px rgba(255,255,255,0.1);
+        }
+
+        .status-dot-active {
+            box-shadow: 0 0 8px #2fd9f4;
+            background-color: #2fd9f4;
+        }
+
+        .status-dot-maintenance {
+            box-shadow: 0 0 8px #ddb7ff;
+            background-color: #ddb7ff;
+        }
+
+        /* Webkit scrollbar styling for seamless look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex flex-col md:flex-row overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- Background Ambient Glow -->
+<div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+<div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full mix-blend-screen opacity-30"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-tertiary/10 blur-[150px] rounded-full mix-blend-screen opacity-20"></div>
+</div>
+<!-- TopNavBar (Mobile Only) -->
+<header class="md:hidden w-full sticky top-0 bg-surface/60 dark:bg-surface-container-low/60 backdrop-blur-xl border-b border-white/20 shadow-sm flex items-center justify-between px-margin-mobile py-4 z-40">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl">grid_view</span>
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Lumina Reserve</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 duration-200">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 duration-200 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 rounded-full status-dot-active"></span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-white/20">
+<img alt="Executive Profile" class="w-full h-full object-cover" data-alt="A detailed headshot of a corporate executive in a modern office. The lighting is dramatic and cinematic, suitable for a dark-mode, high-end SaaS dashboard. Soft blue and purple ambient light illuminates the side of the face, reinforcing the premium tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNIzgolUGfATRHQTkX6aoaUPAwuxhoQxzzlOQu63YVEPJ1F1ssi04Oyoct_iHNdRlmFFJik-cuDUmv7pnRBsBJx3FRXePCZifUIf4VFhW7BfKoYMoT94CrjAeM8iV45qkKUzi5z68PgdI6uME22nHY3SPD2rToacQJCoD6-hjBsfPHz2qiFqiWuOXPmS5YIY4O3FDftKdgc1bzhwa6DD7zbkImLwWQrz15b79MROiqSIjQIl15R2QZzciSjG7ez-2EwIf-dW86J9xd"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex flex-col p-unit h-screen fixed left-0 top-0 w-64 bg-surface/60 dark:bg-surface-container/60 backdrop-blur-xl border-r border-white/20 shadow-xl z-50 transition-all duration-300 ease-in-out">
+<!-- Brand -->
+<div class="px-4 py-6 flex flex-col gap-1 border-b border-white/10 mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-container to-secondary-container flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">view_cozy</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md font-bold text-primary truncate leading-tight">Lumina Reserve</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Premium Access</span>
+</div>
+</div>
+</div>
+<!-- Navigation -->
+<nav class="flex-1 flex flex-col gap-1 overflow-y-auto px-2">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded-xl font-bold transition-all duration-300 ease-in-out group relative overflow-hidden" href="#">
+<div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<span class="material-symbols-outlined relative z-10" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-body-md text-body-md relative z-10">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:backdrop-blur-md rounded-xl transition-all duration-300 ease-in-out group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">calendar_today</span>
+<span class="font-body-md text-body-md">Bookings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:backdrop-blur-md rounded-xl transition-all duration-300 ease-in-out group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">meeting_room</span>
+<span class="font-body-md text-body-md">Resources</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:backdrop-blur-md rounded-xl transition-all duration-300 ease-in-out group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">analytics</span>
+<span class="font-body-md text-body-md">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:backdrop-blur-md rounded-xl transition-all duration-300 ease-in-out group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</nav>
+<!-- Footer Actions -->
+<div class="mt-auto px-2 py-4 flex flex-col gap-2 border-t border-white/10">
+<button class="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-primary to-secondary text-on-primary font-body-md text-body-md font-semibold rounded-xl hover:shadow-[0_0_15px_rgba(192,193,255,0.4)] transition-all duration-300">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+                Book Now
+            </button>
+<div class="flex items-center justify-between mt-2 px-2">
+<a class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px]">group_work</span>
+<span class="font-label-sm text-label-sm group-hover:underline">Role Switcher</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 md:ml-64 p-margin-mobile md:p-margin-desktop min-h-screen flex flex-col gap-gutter max-w-container-max mx-auto w-full relative z-10">
+<!-- Page Header -->
+<header class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
+<div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold text-on-surface tracking-tight flex items-center gap-3">
+                    System Telemetry
+                    <span class="inline-flex h-3 w-3 rounded-full status-dot-active mt-2"></span>
+</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2 max-w-2xl">Real-time overview of workspace utilization, environmental controls, and administrative actions.</p>
+</div>
+<div class="hidden md:flex items-center gap-4 glass-panel-light px-4 py-2 rounded-full">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-white/10" title="Toggle Theme">
+<span class="material-symbols-outlined text-[20px]">dark_mode</span>
+</button>
+<div class="w-px h-6 bg-white/20"></div>
+<button class="relative text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-white/10" title="Notifications">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 rounded-full status-dot-active"></span>
+</button>
+<div class="w-px h-6 bg-white/20"></div>
+<div class="flex items-center gap-3 pl-2 cursor-pointer group">
+<div class="text-right">
+<div class="font-label-sm text-label-sm text-on-surface group-hover:text-primary transition-colors">Admin.01</div>
+<div class="text-[11px] text-on-surface-variant opacity-70">SysOps</div>
+</div>
+<div class="w-9 h-9 rounded-full overflow-hidden border border-white/20 group-hover:border-primary/50 transition-colors">
+<img alt="Executive Profile" class="w-full h-full object-cover" data-alt="A detailed headshot of a corporate executive in a modern office. The lighting is dramatic and cinematic, suitable for a dark-mode, high-end SaaS dashboard. Soft blue and purple ambient light illuminates the side of the face, reinforcing the premium tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnVJTXswVsQMnFZD5tboq9kccdPTM8n6rfrYc-y--H8jSR2OkiDDJfDqSprDH2fLxcGOb6ZvanDwmonHIfakUxdVjZ2kR0yR_6ejModzla6fQncsi2N71lOqZlVW5APwL5RgI9WEDK4Wac_ocm51h404B8rJowzI-PlxIMhxr_XBnKLkvWR2C4SwGEz6rmTysomrLm7WJeKBCPdzl_hxuBgV8qyfJVg_TSdT8vqHrVWAb1UIK27zCmaT3r5D7Pn2-aufRP16gyZWWT"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter auto-rows-[minmax(180px,auto)]">
+<!-- Metric Card 1: Utilization -->
+<div class="md:col-span-3 glass-panel rounded-xl p-6 flex flex-col justify-between group hover:-translate-y-1 transition-transform duration-300">
+<div class="flex justify-between items-start">
+<div class="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary border border-primary/20">
+<span class="material-symbols-outlined">donut_large</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary bg-tertiary/10 px-2 py-1 rounded border border-tertiary/20 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +4.2%
+                    </span>
+</div>
+<div class="mt-6">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Global Occupancy</h3>
+<div class="font-display-xl text-display-xl font-bold text-on-surface tracking-tighter">78<span class="text-headline-md">%</span></div>
+</div>
+</div>
+<!-- Metric Card 2: Peak Hours Bar Chart Placeholder -->
+<div class="md:col-span-6 glass-panel rounded-xl p-6 flex flex-col relative overflow-hidden group">
+<div class="flex justify-between items-center mb-6 z-10">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">bar_chart</span>
+                        Utilization Velocity
+                    </h3>
+<div class="flex gap-2">
+<span class="w-2 h-8 bg-surface-container-high rounded-full overflow-hidden flex flex-col justify-end"><span class="w-full h-[40%] bg-outline-variant"></span></span>
+<span class="w-2 h-8 bg-surface-container-high rounded-full overflow-hidden flex flex-col justify-end"><span class="w-full h-[60%] bg-primary/50"></span></span>
+<span class="w-2 h-8 bg-surface-container-high rounded-full overflow-hidden flex flex-col justify-end"><span class="w-full h-[90%] bg-primary"></span></span>
+<span class="w-2 h-8 bg-surface-container-high rounded-full overflow-hidden flex flex-col justify-end"><span class="w-full h-[30%] bg-outline-variant"></span></span>
+</div>
+</div>
+<!-- Abstract Chart Visualization using gradients -->
+<div class="flex-1 flex items-end gap-2 z-10 h-32">
+<div class="flex-1 bg-gradient-to-t from-primary/10 to-transparent h-[20%] rounded-t-sm border-t border-primary/20"></div>
+<div class="flex-1 bg-gradient-to-t from-primary/20 to-transparent h-[40%] rounded-t-sm border-t border-primary/30"></div>
+<div class="flex-1 bg-gradient-to-t from-primary/40 to-transparent h-[55%] rounded-t-sm border-t border-primary/40 relative group-hover:h-[60%] transition-all duration-500"></div>
+<div class="flex-1 bg-gradient-to-t from-secondary/60 to-transparent h-[85%] rounded-t-sm border-t border-secondary relative group-hover:h-[90%] transition-all duration-500">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface px-2 py-1 rounded text-[10px] font-bold text-secondary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-secondary/30 shadow-[0_0_10px_rgba(221,183,255,0.3)]">Peak: 14:00</div>
+</div>
+<div class="flex-1 bg-gradient-to-t from-primary/50 to-transparent h-[70%] rounded-t-sm border-t border-primary/50 relative group-hover:h-[75%] transition-all duration-500"></div>
+<div class="flex-1 bg-gradient-to-t from-primary/30 to-transparent h-[50%] rounded-t-sm border-t border-primary/30"></div>
+<div class="flex-1 bg-gradient-to-t from-primary/10 to-transparent h-[30%] rounded-t-sm border-t border-primary/20"></div>
+</div>
+<!-- Background decorative grid -->
+<div class="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] z-0 pointer-events-none"></div>
+</div>
+<!-- Metric Card 3: System Health -->
+<div class="md:col-span-3 glass-panel rounded-xl p-6 flex flex-col justify-between group hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden">
+<!-- Soft glowing orb in background -->
+<div class="absolute -right-10 -bottom-10 w-32 h-32 bg-secondary/20 blur-[40px] rounded-full pointer-events-none"></div>
+<div class="flex justify-between items-start z-10">
+<div class="w-10 h-10 rounded-lg bg-secondary-container/20 flex items-center justify-center text-secondary border border-secondary/20">
+<span class="material-symbols-outlined">health_and_safety</span>
+</div>
+</div>
+<div class="mt-6 z-10">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">System Integrity</h3>
+<div class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight text-secondary">Optimal</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="w-1.5 h-1.5 rounded-full status-dot-active"></span>
+<span class="text-xs text-on-surface-variant">All nodes responding</span>
+</div>
+</div>
+</div>
+<!-- Resource Management Table (Room CRUD) -->
+<div class="md:col-span-8 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[400px]">
+<div class="p-5 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02]">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">meeting_room</span>
+<h2 class="font-headline-md text-headline-md font-semibold">Resource Matrix</h2>
+</div>
+<div class="flex gap-3 w-full sm:w-auto">
+<div class="relative flex-1 sm:w-64 neon-border-focus rounded-lg transition-all duration-300">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-surface-container-high/50 border border-white/10 text-on-surface text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-0 placeholder:text-on-surface-variant/50 backdrop-blur-md" placeholder="Locate resource..." type="text"/>
+</div>
+<button class="bg-surface-container hover:bg-surface-container-high border border-white/10 text-on-surface p-2 rounded-lg transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+</button>
+</div>
+</div>
+<div class="flex-1 overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[600px]">
+<thead>
+<tr class="bg-white/[0.02] border-b border-white/5 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+<th class="p-4 font-semibold w-12">#</th>
+<th class="p-4 font-semibold">Designation</th>
+<th class="p-4 font-semibold">Capacity</th>
+<th class="p-4 font-semibold">Status</th>
+<th class="p-4 font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md divide-y divide-white/5">
+<!-- Row 1 -->
+<tr class="hover:bg-white/[0.03] transition-colors group">
+<td class="p-4 text-on-surface-variant text-sm">01</td>
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center border border-white/10">
+<span class="material-symbols-outlined text-[16px] text-primary">chair_alt</span>
+</div>
+<span class="font-medium">Alpha Boardroom</span>
+</div>
+</td>
+<td class="p-4 text-on-surface-variant">24 pax</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-tertiary/10 border border-tertiary/20 text-tertiary text-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full status-dot-active"></span> Online
+                                    </span>
+</td>
+<td class="p-4 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-white/5"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+<button class="p-1.5 text-on-surface-variant hover:text-secondary transition-colors rounded hover:bg-white/5" title="Set Maintenance"><span class="material-symbols-outlined text-[18px]">build</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 2 (Maintenance) -->
+<tr class="hover:bg-white/[0.03] transition-colors group bg-surface-container-high/20">
+<td class="p-4 text-on-surface-variant text-sm">02</td>
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center border border-white/10">
+<span class="material-symbols-outlined text-[16px] text-secondary">computer</span>
+</div>
+<span class="font-medium text-on-surface-variant">Beta Lab</span>
+</div>
+</td>
+<td class="p-4 text-on-surface-variant">12 pax</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full status-dot-maintenance"></span> Maint
+                                    </span>
+</td>
+<td class="p-4 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-white/5"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+<button class="p-1.5 text-secondary hover:text-secondary-fixed transition-colors rounded hover:bg-secondary/10 bg-secondary/5" title="Clear Maintenance"><span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">build</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-white/[0.03] transition-colors group">
+<td class="p-4 text-on-surface-variant text-sm">03</td>
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center border border-white/10">
+<span class="material-symbols-outlined text-[16px] text-primary">podcasts</span>
+</div>
+<span class="font-medium">Studio C</span>
+</div>
+</td>
+<td class="p-4 text-on-surface-variant">4 pax</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-tertiary/10 border border-tertiary/20 text-tertiary text-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full status-dot-active"></span> Online
+                                    </span>
+</td>
+<td class="p-4 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-white/5"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+<button class="p-1.5 text-on-surface-variant hover:text-secondary transition-colors rounded hover:bg-white/5"><span class="material-symbols-outlined text-[18px]">build</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Audit Trail List -->
+<div class="md:col-span-4 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[400px]">
+<div class="p-5 border-b border-white/10 bg-white/[0.02]">
+<h2 class="font-headline-md text-headline-md font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-outline">history</span>
+                        Audit Log
+                    </h2>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<!-- Log Item 1 -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[11px] top-6 bottom-[-20px] w-px bg-white/10"></div>
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-white/20 flex items-center justify-center shrink-0 z-10 mt-0.5">
+<span class="material-symbols-outlined text-[12px] text-secondary">build</span>
+</div>
+<div>
+<div class="text-sm font-medium text-on-surface">Beta Lab status changed</div>
+<div class="text-xs text-on-surface-variant mt-0.5">Admin.01 set status to <span class="text-secondary">Maintenance</span></div>
+<div class="text-[10px] text-outline mt-1 font-mono">10:42 AM · ID-8492</div>
+</div>
+</div>
+<!-- Log Item 2 -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[11px] top-6 bottom-[-20px] w-px bg-white/10"></div>
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-white/20 flex items-center justify-center shrink-0 z-10 mt-0.5">
+<span class="material-symbols-outlined text-[12px] text-primary">add</span>
+</div>
+<div>
+<div class="text-sm font-medium text-on-surface">New resource provisioned</div>
+<div class="text-xs text-on-surface-variant mt-0.5">System auto-scaled 'Virtual Instance X1'</div>
+<div class="text-[10px] text-outline mt-1 font-mono">09:15 AM · SYS-AUTO</div>
+</div>
+</div>
+<!-- Log Item 3 -->
+<div class="flex gap-4 relative">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-white/20 flex items-center justify-center shrink-0 z-10 mt-0.5">
+<span class="material-symbols-outlined text-[12px] text-tertiary">login</span>
+</div>
+<div>
+<div class="text-sm font-medium text-on-surface">Admin authenticated</div>
+<div class="text-xs text-on-surface-variant mt-0.5">Session established from IP 192.168.1.45</div>
+<div class="text-[10px] text-outline mt-1 font-mono">08:00 AM · SEC-LOGIN</div>
+</div>
+</div>
+</div>
+<div class="p-3 border-t border-white/10 text-center">
+<button class="text-xs font-semibold text-primary hover:text-primary-fixed transition-colors uppercase tracking-widest">View Full Log</button>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="mt-8 w-full sticky bottom-0 bg-surface/60 dark:bg-surface-container-highest/60 backdrop-blur-xl border-t border-white/20 shadow-inner flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 z-30 rounded-t-xl md:rounded-none">
+<div class="font-headline-md text-headline-md text-primary hidden md:block">Lumina Reserve</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">© 2024 Lumina Reserve. Premium Workspace Management.</div>
+<div class="flex gap-4">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer hidden md:block" href="#">Terms of Service</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">Help Center</a>
+</div>
+</footer>
+</main>
+<script>
+        // Simple script to handle 'Maintenance' toggle visual feedback
+        document.addEventListener('DOMContentLoaded', () => {
+            const maintButtons = document.querySelectorAll('button[title="Set Maintenance"], button[title="Clear Maintenance"]');
+            
+            maintButtons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const row = this.closest('tr');
+                    const statusCell = row.querySelector('td:nth-child(4)');
+                    const isMaint = row.classList.contains('bg-surface-container-high/20');
+                    
+                    if (isMaint) {
+                        // Switch to Online
+                        row.classList.remove('bg-surface-container-high/20');
+                        statusCell.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-tertiary/10 border border-tertiary/20 text-tertiary text-xs font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full status-dot-active"></span> Online
+                                    </span>`;
+                        this.title = "Set Maintenance";
+                        this.className = "p-1.5 text-on-surface-variant hover:text-secondary transition-colors rounded hover:bg-white/5";
+                        this.innerHTML = `<span class="material-symbols-outlined text-[18px]">build</span>`;
+                        
+                        // Change icon color back
+                        const iconSpan = row.querySelector('td:nth-child(2) .material-symbols-outlined');
+                        if(iconSpan) iconSpan.className = "material-symbols-outlined text-[16px] text-primary";
+                        const textSpan = row.querySelector('td:nth-child(2) .font-medium');
+                        if(textSpan) textSpan.classList.remove('text-on-surface-variant');
+
+                    } else {
+                        // Switch to Maintenance
+                        row.classList.add('bg-surface-container-high/20');
+                        statusCell.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full status-dot-maintenance"></span> Maint
+                                    </span>`;
+                        this.title = "Clear Maintenance";
+                        this.className = "p-1.5 text-secondary hover:text-secondary-fixed transition-colors rounded hover:bg-secondary/10 bg-secondary/5";
+                        this.innerHTML = `<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">build</span>`;
+                        
+                        // Dim icon color
+                        const iconSpan = row.querySelector('td:nth-child(2) .material-symbols-outlined');
+                        if(iconSpan) iconSpan.className = "material-symbols-outlined text-[16px] text-secondary";
+                        const textSpan = row.querySelector('td:nth-child(2) .font-medium');
+                        if(textSpan) textSpan.classList.add('text-on-surface-variant');
+                    }
+                });
+            });
+        });
+    </script>
+</body></html>
