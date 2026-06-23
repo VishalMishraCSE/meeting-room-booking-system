@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface Room {
   id: string;
@@ -39,6 +40,8 @@ interface PendingApproval {
 }
 
 export default function ManagerPortal() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const role = "manager";
   const [currentView, setCurrentView] = useState<string>("bookings"); // "bookings" | "rooms"
 
@@ -196,8 +199,15 @@ export default function ManagerPortal() {
   const [approvalSearchQuery, setApprovalSearchQuery] = useState<string>("");
   const [approvalFilter, setApprovalFilter] = useState<"all" | "vip" | "large">("all");
 
-  // Initialize and Toggle Theme
+  // Initialize and Toggle Theme & Session Guard
   useEffect(() => {
+    const storedRole = localStorage.getItem("userRole");
+    if (!storedRole || storedRole !== "manager") {
+      router.push("/login");
+    } else {
+      setLoading(false);
+    }
+
     const storedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
     if (storedTheme === "light") {
       setTheme("light");
@@ -206,7 +216,7 @@ export default function ManagerPortal() {
       setTheme("dark");
       document.documentElement.classList.add("dark");
     }
-  }, []);
+  }, [router]);
 
   const toggleTheme = () => {
     if (theme === "dark") {
@@ -218,6 +228,12 @@ export default function ManagerPortal() {
       document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userName");
+    router.push("/login");
   };
 
   // Dynamic slot generation based on bookings and maintenance
@@ -403,6 +419,17 @@ export default function ManagerPortal() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background text-on-surface flex items-center justify-center font-bold text-lg">
+        <div className="flex flex-col items-center gap-4">
+          <span className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></span>
+          <span>Redirecting to login...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex overflow-hidden bg-background text-on-surface">
       {/* Ambient Background Lighting */}
@@ -452,20 +479,29 @@ export default function ManagerPortal() {
         </ul>
 
         {/* User Profile Card */}
-        <div className="mt-auto pt-4 border-t border-outline-variant/20 px-2 flex items-center gap-3">
-          <img 
-            alt="User profile photo" 
-            className="w-10 h-10 rounded-full object-cover border border-outline-variant/30" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWsxu684Zw8iwXpp-lB10J2kIwZkSYnGkRKL3VyoUVJRuSzd6jE7UYzX7ew-l-T4IqvoT8_xPYfB97fvpw5UAAr-HJe91-BR6a_ukNgFbHw2lpEhm_KuLYRmrI8T98QMLawW64PAPVts7Ad91FieBVb0Ac6T7trtjJoTJU_C-6XipnmNaIIkcNguqLzLlK6EZWAW4zrKbp034sOzAcJxKngHnL8b7U2klDs6zi1tWX-ACa2qf5G3EKH6lDM_3hIOGcvBzpKEyUzYhB"
-          />
-          <div className="flex flex-col">
-            <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[120px]">
-              Sarah Jenkins
-            </span>
-            <span className="font-label-sm text-label-sm text-on-surface-variant text-[11px] truncate">
-              VP Operations
-            </span>
+        <div className="mt-auto pt-4 border-t border-outline-variant/20 px-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img 
+              alt="User profile photo" 
+              className="w-10 h-10 rounded-full object-cover border border-outline-variant/30" 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWsxu684Zw8iwXpp-lB10J2kIwZkSYnGkRKL3VyoUVJRuSzd6jE7UYzX7ew-l-T4IqvoT8_xPYfB97fvpw5UAAr-HJe91-BR6a_ukNgFbHw2lpEhm_KuLYRmrI8T98QMLawW64PAPVts7Ad91FieBVb0Ac6T7trtjJoTJU_C-6XipnmNaIIkcNguqLzLlK6EZWAW4zrKbp034sOzAcJxKngHnL8b7U2klDs6zi1tWX-ACa2qf5G3EKH6lDM_3hIOGcvBzpKEyUzYhB"
+            />
+            <div className="flex flex-col">
+              <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[100px]">
+                Sarah Jenkins
+              </span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant text-[11px] truncate">
+                VP Operations
+              </span>
+            </div>
           </div>
+          <button 
+            onClick={handleLogout}
+            className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors flex items-center justify-center"
+            title="Logout"
+          >
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+          </button>
         </div>
       </nav>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface Room {
   id: string;
@@ -24,7 +25,9 @@ interface Booking {
 }
 
 export default function BookingDashboard() {
-  const role = "user";
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const role = "employee";
   const [currentView, setCurrentView] = useState<string>("rooms"); // "rooms" | "bookings"
 
   // Unified reactive mock database state
@@ -132,8 +135,15 @@ export default function BookingDashboard() {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
-  // Initialize and Toggle Theme
+  // Initialize and Toggle Theme & Session Guard
   useEffect(() => {
+    const storedRole = localStorage.getItem("userRole");
+    if (!storedRole || storedRole !== "employee") {
+      router.push("/login");
+    } else {
+      setLoading(false);
+    }
+
     const storedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
     if (storedTheme === "light") {
       setTheme("light");
@@ -142,7 +152,7 @@ export default function BookingDashboard() {
       setTheme("dark");
       document.documentElement.classList.add("dark");
     }
-  }, []);
+  }, [router]);
 
   const toggleTheme = () => {
     if (theme === "dark") {
@@ -154,6 +164,12 @@ export default function BookingDashboard() {
       document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userName");
+    router.push("/login");
   };
 
   // Dynamic slot generation based on bookings and maintenance
@@ -298,6 +314,17 @@ export default function BookingDashboard() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background text-on-surface flex items-center justify-center font-bold text-lg">
+        <div className="flex flex-col items-center gap-4">
+          <span className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></span>
+          <span>Redirecting to login...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex overflow-hidden bg-background text-on-surface">
       {/* Ambient Background Lighting */}
@@ -344,20 +371,29 @@ export default function BookingDashboard() {
         </ul>
 
         {/* User Profile */}
-        <div className="mt-auto pt-4 border-t border-outline-variant/20 px-2 flex items-center gap-3">
-          <img 
-            alt="User profile photo" 
-            className="w-10 h-10 rounded-full object-cover border border-outline-variant/30" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0xNYgdcg5mdCo2E4d0WUXELauNpPz9sKAsS89TN5zvbVExdpn1p_QWn9-cDPz7kxN3K1pB-XNbU5Hg-Igmadf8pjAXULBfVypjLsjYsyNaxv6XQ2pZVg3ROccMir4PnQ4MS-K5M-D_UtcCcWIpxc7FPhoTW7NPVhBb6abVNTiz639dyIsb8RlH5ewm4TL33hUjJEQ5t6sFDHkUZZWOretc2-_lIQwPxvpCXIWpwvCB80ZlyGp68snCw7a55L2TIp8c47m5HJkTDTV"
-          />
-          <div className="flex flex-col">
-            <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[120px]">
-              Alex Rivers
-            </span>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
-              Premium Member
-            </span>
+        <div className="mt-auto pt-4 border-t border-outline-variant/20 px-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img 
+              alt="User profile photo" 
+              className="w-10 h-10 rounded-full object-cover border border-outline-variant/30" 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0xNYgdcg5mdCo2E4d0WUXELauNpPz9sKAsS89TN5zvbVExdpn1p_QWn9-cDPz7kxN3K1pB-XNbU5Hg-Igmadf8pjAXULBfVypjLsjYsyNaxv6XQ2pZVg3ROccMir4PnQ4MS-K5M-D_UtcCcWIpxc7FPhoTW7NPVhBb6abVNTiz639dyIsb8RlH5ewm4TL33hUjJEQ5t6sFDHkUZZWOretc2-_lIQwPxvpCXIWpwvCB80ZlyGp68snCw7a55L2TIp8c47m5HJkTDTV"
+            />
+            <div className="flex flex-col">
+              <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[100px]">
+                Alex Rivers
+              </span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant text-[11px]">
+                Employee
+              </span>
+            </div>
           </div>
+          <button 
+            onClick={handleLogout}
+            className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors flex items-center justify-center"
+            title="Logout"
+          >
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+          </button>
         </div>
       </nav>
 
