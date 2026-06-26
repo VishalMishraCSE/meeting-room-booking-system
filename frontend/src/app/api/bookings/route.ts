@@ -194,7 +194,7 @@ export async function POST(request: Request) {
 
       return { newB, preemptedBooking };
     }, {
-      isolationLevel: 'Serializable'
+      isolationLevel: 'ReadCommitted'
     });
 
     const newBooking = result.newB;

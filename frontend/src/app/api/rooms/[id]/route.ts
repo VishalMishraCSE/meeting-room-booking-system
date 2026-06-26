@@ -41,6 +41,9 @@ export async function PATCH(
 
     const { id } = await params;
     const roomId = parseInt(id);
+    if (isNaN(roomId)) {
+      return NextResponse.json({ error: 'Invalid room ID format' }, { status: 400 });
+    }
     const updates = await request.json();
 
     const dataToUpdate: any = {};
@@ -121,6 +124,9 @@ export async function DELETE(
 
     const { id } = await params;
     const roomId = parseInt(id);
+    if (isNaN(roomId)) {
+      return NextResponse.json({ error: 'Invalid room ID format' }, { status: 400 });
+    }
 
     // 1. Cascade delete all dependencies safely in a transaction and capture affected future bookings
     const futureBookingsToNotify = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {

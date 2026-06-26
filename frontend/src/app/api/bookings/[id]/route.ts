@@ -40,6 +40,10 @@ export async function DELETE(
     const { id } = await params;
     const bookingId = parseInt(id);
 
+    if (isNaN(bookingId)) {
+      return NextResponse.json({ error: 'Invalid booking ID format' }, { status: 400 });
+    }
+
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {

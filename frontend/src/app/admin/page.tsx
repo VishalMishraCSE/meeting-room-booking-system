@@ -209,8 +209,19 @@ export default function AdminPortal() {
 
   const fetchData = async () => {
     try {
-      const roomsRes = await fetch("/api/rooms");
-      const roomsData = await roomsRes.json();
+      // Fetch rooms, bookings, and logs in parallel for faster page load
+      const [roomsRes, bookingsRes, logsRes] = await Promise.all([
+        fetch("/api/rooms"),
+        fetch("/api/bookings"),
+        fetch("/api/logs"),
+      ]);
+
+      const [roomsData, bookingsData, logsData] = await Promise.all([
+        roomsRes.json(),
+        bookingsRes.json(),
+        logsRes.json(),
+      ]);
+
       if (roomsRes.ok && Array.isArray(roomsData)) {
         const mappedRooms = roomsData.map((dbR: any) => ({
           id: dbR.id.toString(),
@@ -227,8 +238,6 @@ export default function AdminPortal() {
         }
       }
 
-      const bookingsRes = await fetch("/api/bookings");
-      const bookingsData = await bookingsRes.json();
       if (bookingsRes.ok && Array.isArray(bookingsData)) {
         const activeBookings = bookingsData.filter((b: any) => b.status !== 'Cancelled');
         const mappedBookings = activeBookings.map((dbB: any) => {
@@ -248,8 +257,6 @@ export default function AdminPortal() {
         setBookings(mappedBookings);
       }
 
-      const logsRes = await fetch("/api/logs");
-      const logsData = await logsRes.json();
       if (logsRes.ok && Array.isArray(logsData)) {
         setAuditLogs(logsData);
       }

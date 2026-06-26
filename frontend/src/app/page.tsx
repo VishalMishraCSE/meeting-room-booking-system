@@ -154,9 +154,17 @@ export default function BookingDashboard() {
 
   const fetchData = async () => {
     try {
-      // Fetch rooms
-      const roomsRes = await fetch("/api/rooms");
-      const roomsData = await roomsRes.json();
+      // Fetch rooms and bookings in parallel for faster page load
+      const [roomsRes, bookingsRes] = await Promise.all([
+        fetch("/api/rooms"),
+        fetch("/api/bookings"),
+      ]);
+
+      const [roomsData, bookingsData] = await Promise.all([
+        roomsRes.json(),
+        bookingsRes.json(),
+      ]);
+
       if (roomsRes.ok && Array.isArray(roomsData)) {
         const mappedRooms = roomsData.map((dbR: any) => ({
           id: dbR.id.toString(),
@@ -173,9 +181,6 @@ export default function BookingDashboard() {
         }
       }
 
-      // Fetch bookings
-      const bookingsRes = await fetch("/api/bookings");
-      const bookingsData = await bookingsRes.json();
       if (bookingsRes.ok && Array.isArray(bookingsData)) {
         const activeBookings = bookingsData.filter((b: any) => b.status !== 'Cancelled');
         const mappedBookings = activeBookings.map((dbB: any) => {

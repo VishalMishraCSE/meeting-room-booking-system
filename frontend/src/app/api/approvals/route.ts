@@ -151,7 +151,7 @@ export async function POST(request: Request) {
         return { booking, updated };
       }
     }, {
-      isolationLevel: 'Serializable'
+      isolationLevel: 'ReadCommitted'
     });
 
     const { booking, updated } = result;

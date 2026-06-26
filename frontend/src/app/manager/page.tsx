@@ -216,8 +216,19 @@ export default function ManagerPortal() {
 
   const fetchData = async () => {
     try {
-      const roomsRes = await fetch("/api/rooms");
-      const roomsData = await roomsRes.json();
+      // Fetch rooms, bookings, and pending approvals in parallel for faster page load
+      const [roomsRes, bookingsRes, pendingRes] = await Promise.all([
+        fetch("/api/rooms"),
+        fetch("/api/bookings"),
+        fetch("/api/approvals"),
+      ]);
+
+      const [roomsData, bookingsData, pendingData] = await Promise.all([
+        roomsRes.json(),
+        bookingsRes.json(),
+        pendingRes.json(),
+      ]);
+
       if (roomsRes.ok && Array.isArray(roomsData)) {
         const mappedRooms = roomsData.map((dbR: any) => ({
           id: dbR.id.toString(),
@@ -234,8 +245,6 @@ export default function ManagerPortal() {
         }
       }
 
-      const bookingsRes = await fetch("/api/bookings");
-      const bookingsData = await bookingsRes.json();
       if (bookingsRes.ok && Array.isArray(bookingsData)) {
         const activeBookings = bookingsData.filter((b: any) => b.status !== 'Cancelled');
         const mappedBookings = activeBookings.map((dbB: any) => {
@@ -255,8 +264,6 @@ export default function ManagerPortal() {
         setBookings(mappedBookings);
       }
 
-      const pendingRes = await fetch("/api/approvals");
-      const pendingData = await pendingRes.json();
       if (pendingRes.ok && Array.isArray(pendingData)) {
         const mappedApprovals = pendingData.map((dbB: any) => {
           const start = new Date(dbB.startTime);
