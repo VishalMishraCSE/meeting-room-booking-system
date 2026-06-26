@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { cookies } from 'next/headers';
 import { sendBookingConfirmationEmail, sendApprovalRequestEmail, sendBookingCancellationEmail } from '@/lib/mail';
 
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
     let preemptedBooking: any = null;
 
     // Execute in SERIALIZABLE transaction context to prevent race conditions and concurrent double-bookings
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Find conflicting booking for the same room
       const conflict = await tx.booking.findFirst({
         where: {
@@ -267,7 +268,7 @@ export async function POST(request: Request) {
       // Notify managers about the approval request
       prisma.user.findMany({
         where: { role: 'Manager', isActive: true }
-      }).then(managers => {
+      }).then((managers: { email: string; name: string }[]) => {
         const locationLabel = room.location || `Room ${room.roomNumber}, ${room.floor.name}`;
         for (const mgr of managers) {
           sendApprovalRequestEmail(
@@ -279,9 +280,9 @@ export async function POST(request: Request) {
             start,
             end,
             title
-          ).catch(e => console.error(`Failed to notify manager ${mgr.email}:`, e));
+          ).catch((e: unknown) => console.error(`Failed to notify manager ${mgr.email}:`, e));
         }
-      }).catch(e => console.error('Failed to fetch managers for notification:', e));
+      }).catch((e: unknown) => console.error('Failed to fetch managers for notification:', e));
     }
 
     return NextResponse.json(newBooking, { status: 201 });
