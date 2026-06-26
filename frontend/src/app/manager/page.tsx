@@ -42,7 +42,7 @@ interface PendingApproval {
 export default function ManagerPortal() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const role = "manager";
+  const [userName, setUserName] = useState<string>("Sarah Jenkins");
   const [currentView, setCurrentView] = useState<string>("bookings"); // "bookings" | "rooms"
 
   // Unified reactive mock database state
@@ -189,7 +189,7 @@ export default function ManagerPortal() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [capacityFilter, setCapacityFilter] = useState<string>("6-12");
   const [amenitiesFilter, setAmenitiesFilter] = useState<string[]>([]);
-  const [attendees, setAttendees] = useState<string[]>(["Sarah J.", "Mike T."]);
+  const [attendees, setAttendees] = useState<string[]>(["Harshith Yadav", "Malavika Yadav"]);
   const [meetingTitle, setMeetingTitle] = useState<string>("Q3 Strategy Sync");
   const [attendeeInput, setAttendeeInput] = useState<string>("");
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
@@ -199,13 +199,103 @@ export default function ManagerPortal() {
   const [approvalSearchQuery, setApprovalSearchQuery] = useState<string>("");
   const [approvalFilter, setApprovalFilter] = useState<"all" | "vip" | "large">("all");
 
+  const getSlotDates = (dateStr: string, timeStr: string) => {
+    const day = parseInt(dateStr);
+    const year = 2026;
+    const month = 5; // June is index 5
+    
+    const [time, ampm] = timeStr.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+    
+    const startTime = new Date(year, month, day, hours, minutes, 0, 0);
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
+    return { startTime, endTime };
+  };
+
+  const fetchData = async () => {
+    try {
+      const roomsRes = await fetch("/api/rooms");
+      const roomsData = await roomsRes.json();
+      if (roomsRes.ok && Array.isArray(roomsData)) {
+        const mappedRooms = roomsData.map((dbR: any) => ({
+          id: dbR.id.toString(),
+          name: dbR.name,
+          seats: dbR.capacity,
+          location: dbR.location || `Room ${dbR.roomNumber}, Floor ${dbR.floorId}`,
+          image: dbR.heroImageUrl || "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop",
+          amenities: dbR.amenities?.map((a: any) => a.name.toLowerCase()) || [],
+          status: dbR.status.toLowerCase() === "available" ? ("online" as const) : ("maintenance" as const)
+        }));
+        setRooms(mappedRooms);
+        if (mappedRooms.length > 0) {
+          setSelectedRoomId(mappedRooms[0].id);
+        }
+      }
+
+      const bookingsRes = await fetch("/api/bookings");
+      const bookingsData = await bookingsRes.json();
+      if (bookingsRes.ok && Array.isArray(bookingsData)) {
+        const activeBookings = bookingsData.filter((b: any) => b.status !== 'Cancelled');
+        const mappedBookings = activeBookings.map((dbB: any) => {
+          const start = new Date(dbB.startTime);
+          const timeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return {
+            id: dbB.id.toString(),
+            roomId: dbB.roomId.toString(),
+            roomName: dbB.room?.name || "Unknown Room",
+            date: start.getDate().toString(),
+            time: timeStr,
+            title: dbB.title,
+            booker: dbB.user?.name || "Unknown",
+            attendees: dbB.attendees?.map((a: any) => a.email) || []
+          };
+        });
+        setBookings(mappedBookings);
+      }
+
+      const pendingRes = await fetch("/api/approvals");
+      const pendingData = await pendingRes.json();
+      if (pendingRes.ok && Array.isArray(pendingData)) {
+        const mappedApprovals = pendingData.map((dbB: any) => {
+          const start = new Date(dbB.startTime);
+          const end = new Date(dbB.endTime);
+          const startStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const endStr = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const isVIP = dbB.title.toLowerCase().includes("vip") || dbB.title.toLowerCase().includes("exec") || dbB.user?.role?.toLowerCase() === "manager";
+          return {
+            id: dbB.id.toString(),
+            roomName: dbB.room?.name || "Unknown Room",
+            roomId: dbB.roomId.toString(),
+            requestedBy: dbB.user?.name || dbB.user?.email || "Unknown User",
+            role: dbB.user?.role || "Employee",
+            dateText: start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            dateVal: start.getDate().toString(),
+            timeText: `${startStr} - ${endStr}`,
+            timeVal: startStr,
+            attendeesCount: dbB.attendees?.length || 0,
+            details: dbB.agenda || "No custom setup",
+            priority: isVIP ? ("VIP" as const) : dbB.room?.capacity >= 15 ? ("Training" as const) : ("Standard" as const)
+          };
+        });
+        setPendingApprovals(mappedApprovals);
+      }
+    } catch (err) {
+      console.error("Failed to fetch manager data:", err);
+    }
+  };
+
   // Initialize and Toggle Theme & Session Guard
   useEffect(() => {
     const storedRole = localStorage.getItem("userRole");
+    const storedName = localStorage.getItem("userName");
     if (!storedRole || storedRole !== "manager") {
       router.push("/login");
     } else {
       setLoading(false);
+      if (storedName) setUserName(storedName);
+      fetchData();
     }
 
     const storedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
@@ -233,6 +323,8 @@ export default function ManagerPortal() {
   const handleLogout = () => {
     localStorage.removeItem("userRole");
     localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userId");
     router.push("/login");
   };
 
@@ -255,7 +347,7 @@ export default function ManagerPortal() {
     });
   };
 
-  const selectedRoom = rooms.find(r => r.id === selectedRoomId) || rooms[0];
+  const selectedRoom = rooms.find(r => r.id === selectedRoomId) || rooms[0] || { id: "0", name: "No Rooms", status: "maintenance" };
   const selectedRoomSlots = getTimeSlotsForRoom(selectedRoom.id, selectedDate);
 
   const isSlotAlreadyBooked = bookings.some(
@@ -264,7 +356,7 @@ export default function ManagerPortal() {
   const isSelectedRoomMaintenance = selectedRoom.status === "maintenance";
 
   // Booking confirm handler
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (selectedRoom.status === "maintenance") {
       alert("This room is currently under maintenance and cannot be booked.");
       return;
@@ -279,58 +371,96 @@ export default function ManagerPortal() {
       return;
     }
 
-    const newBooking: Booking = {
-      id: `BK-${Date.now()}`,
-      roomId: selectedRoom.id,
-      roomName: selectedRoom.name,
-      date: selectedDate,
-      time: selectedTime,
-      title: meetingTitle || "Project Sync",
-      booker: "Sarah Jenkins (VP)",
-      attendees: [...attendees]
-    };
+    const { startTime, endTime } = getSlotDates(selectedDate, selectedTime);
 
-    setBookings(prev => [...prev, newBooking]);
-    setIsSuccessModalOpen(true);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomId: selectedRoom.id,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          title: meetingTitle || "Project Sync",
+          agenda: "Scheduled by Manager",
+          attendees: attendees,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to book");
+      }
+
+      setIsSuccessModalOpen(true);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const handleCancelBooking = (bookingId: string) => {
+  const handleCancelBooking = async (bookingId: string) => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
     if (confirm(`Cancel reservation for ${booking.roomName} at ${booking.time}?`)) {
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to cancel booking");
+        }
+        fetchData();
+      } catch (err: any) {
+        alert(err.message);
+      }
     }
   };
 
   // Manager Approval Workflow Handlers
-  const handleApproveRequest = (reqId: string) => {
-    const req = pendingApprovals.find(r => r.id === reqId);
-    if (!req) return;
-
-    const newBooking: Booking = {
-      id: `BK-APP-${Date.now()}`,
-      roomId: req.roomId,
-      roomName: req.roomName,
-      date: req.dateVal,
-      time: req.timeVal,
-      title: `${req.priority} Executive Sync`,
-      booker: req.requestedBy,
-      attendees: Array.from({ length: req.attendeesCount }, (_, i) => `Invitee ${i + 1}`)
-    };
-
-    setBookings(prev => {
-      const filtered = prev.filter(b => !(b.roomId === req.roomId && b.date === req.dateVal && b.time === req.timeVal));
-      return [...filtered, newBooking];
-    });
-
-    setPendingApprovals(prev => prev.filter(r => r.id !== reqId));
+  const handleApproveRequest = async (reqId: string) => {
+    try {
+      const res = await fetch("/api/approvals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookingId: reqId, action: "Approve" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to approve request");
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const handleRejectRequest = (reqId: string) => {
-    const req = pendingApprovals.find(r => r.id === reqId);
-    if (!req) return;
-    setPendingApprovals(prev => prev.filter(r => r.id !== reqId));
+  const handleRejectRequest = async (reqId: string) => {
+    const reason = prompt("Enter reason for rejection:", "Schedule conflict or priority adjustment");
+    if (reason === null) return; // user cancelled prompt
+
+    try {
+      const res = await fetch("/api/approvals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookingId: reqId, action: "Reject", reason }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to reject request");
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const filteredRooms = rooms.filter(room => {
@@ -488,7 +618,7 @@ export default function ManagerPortal() {
             />
             <div className="flex flex-col">
               <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[100px]">
-                Sarah Jenkins
+                {userName}
               </span>
               <span className="font-label-sm text-label-sm text-on-surface-variant text-[11px] truncate">
                 VP Operations

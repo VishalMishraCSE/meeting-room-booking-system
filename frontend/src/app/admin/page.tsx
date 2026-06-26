@@ -37,7 +37,7 @@ interface AuditLog {
 export default function AdminPortal() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const role = "admin";
+  const [userName, setUserName] = useState<string>("Admin.01");
   const [currentView, setCurrentView] = useState<string>("dashboard"); // "dashboard" | "rooms" | "audit"
 
   // Unified reactive mock database state
@@ -180,30 +180,163 @@ export default function AdminPortal() {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [editRoomName, setEditRoomName] = useState<string>("");
   const [editRoomSeats, setEditRoomSeats] = useState<number>(10);
+  const [editRoomLocation, setEditRoomLocation] = useState<string>("");
+  const [editRoomImage, setEditRoomImage] = useState<string>("");
+  const [editRoomAmenities, setEditRoomAmenities] = useState<string[]>([]);
+
+  // Add Room State
+  const [isAddRoomModalOpen, setIsAddRoomModalOpen] = useState<boolean>(false);
+  const [addRoomName, setAddRoomName] = useState<string>("");
+  const [addRoomSeats, setAddRoomSeats] = useState<number>(10);
+  const [addRoomLocation, setAddRoomLocation] = useState<string>("");
+  const [addRoomImage, setAddRoomImage] = useState<string>("");
+  const [addRoomAmenities, setAddRoomAmenities] = useState<string[]>([]);
+
+  const getSlotDates = (dateStr: string, timeStr: string) => {
+    const day = parseInt(dateStr);
+    const year = 2026;
+    const month = 5; // June is index 5
+    
+    const [time, ampm] = timeStr.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+    
+    const startTime = new Date(year, month, day, hours, minutes, 0, 0);
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
+    return { startTime, endTime };
+  };
+
+  const fetchData = async () => {
+    try {
+      const roomsRes = await fetch("/api/rooms");
+      const roomsData = await roomsRes.json();
+      if (roomsRes.ok && Array.isArray(roomsData)) {
+        const mappedRooms = roomsData.map((dbR: any) => ({
+          id: dbR.id.toString(),
+          name: dbR.name,
+          seats: dbR.capacity,
+          location: dbR.location || `Room ${dbR.roomNumber}, Floor ${dbR.floorId}`,
+          image: dbR.heroImageUrl || "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop",
+          amenities: dbR.amenities?.map((a: any) => a.name.toLowerCase()) || [],
+          status: dbR.status.toLowerCase() === "available" ? ("online" as const) : ("maintenance" as const)
+        }));
+        setRooms(mappedRooms);
+        if (mappedRooms.length > 0) {
+          setSelectedRoomId(mappedRooms[0].id);
+        }
+      }
+
+      const bookingsRes = await fetch("/api/bookings");
+      const bookingsData = await bookingsRes.json();
+      if (bookingsRes.ok && Array.isArray(bookingsData)) {
+        const activeBookings = bookingsData.filter((b: any) => b.status !== 'Cancelled');
+        const mappedBookings = activeBookings.map((dbB: any) => {
+          const start = new Date(dbB.startTime);
+          const timeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return {
+            id: dbB.id.toString(),
+            roomId: dbB.roomId.toString(),
+            roomName: dbB.room?.name || "Unknown Room",
+            date: start.getDate().toString(),
+            time: timeStr,
+            title: dbB.title,
+            booker: dbB.user?.name || "Unknown",
+            attendees: dbB.attendees?.map((a: any) => a.email) || []
+          };
+        });
+        setBookings(mappedBookings);
+      }
+
+      const logsRes = await fetch("/api/logs");
+      const logsData = await logsRes.json();
+      if (logsRes.ok && Array.isArray(logsData)) {
+        setAuditLogs(logsData);
+      }
+    } catch (err) {
+      console.error("Failed to fetch admin data:", err);
+    }
+  };
+
+  const handleAddRoomSubmit = async () => {
+    if (!addRoomName.trim() || !addRoomLocation.trim()) {
+      alert("Please fill in the room designation and location.");
+      return;
+    }
+    const generatedRoomNumber = `RM-${Math.floor(100 + Math.random() * 900)}`;
+
+    try {
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: addRoomName,
+          roomNumber: generatedRoomNumber,
+          capacity: addRoomSeats,
+          floorId: 1, // default
+          location: addRoomLocation,
+          description: "Executive facility",
+          status: "Available",
+          heroImageUrl: addRoomImage.trim() || "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop",
+          amenities: addRoomAmenities,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create room");
+      }
+
+      fetchData();
+      
+      // Reset state
+      setAddRoomName("");
+      setAddRoomSeats(10);
+      setAddRoomLocation("");
+      setAddRoomImage("");
+      setAddRoomAmenities([]);
+      setIsAddRoomModalOpen(false);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteRoom = async (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    if (confirm(`Are you sure you want to delete room "${room.name}"? This action cannot be undone.`)) {
+      try {
+        const res = await fetch(`/api/rooms/${roomId}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to delete room");
+        }
+        fetchData();
+      } catch (err: any) {
+        alert(err.message);
+      }
+    }
+  };
 
   // Add system operation logs helper
   const addAuditLog = (title: string, description: string, code = "SYS-OP", icon = "info", iconColor = "text-primary") => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const newLog: AuditLog = {
-      id: `LOG-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      title,
-      description,
-      time: timeStr,
-      code,
-      icon,
-      iconColor
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
+    fetchData();
   };
 
   // Initialize and Toggle Theme & Session Guard
   useEffect(() => {
     const storedRole = localStorage.getItem("userRole");
+    const storedName = localStorage.getItem("userName");
     if (!storedRole || storedRole !== "admin") {
       router.push("/login");
     } else {
       setLoading(false);
+      if (storedName) setUserName(storedName);
+      fetchData();
     }
 
     const storedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
@@ -231,6 +364,8 @@ export default function AdminPortal() {
   const handleLogout = () => {
     localStorage.removeItem("userRole");
     localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userId");
     router.push("/login");
   };
 
@@ -253,7 +388,7 @@ export default function AdminPortal() {
     });
   };
 
-  const selectedRoom = rooms.find(r => r.id === selectedRoomId) || rooms[0];
+  const selectedRoom = rooms.find(r => r.id === selectedRoomId) || rooms[0] || { id: "0", name: "No Rooms", status: "maintenance" };
   const selectedRoomSlots = getTimeSlotsForRoom(selectedRoom.id, selectedDate);
 
   const isSlotAlreadyBooked = bookings.some(
@@ -262,98 +397,83 @@ export default function AdminPortal() {
   const isSelectedRoomMaintenance = selectedRoom.status === "maintenance";
 
   // Booking confirm handler with Admin Preemption override logic
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     const isBooked = bookings.some(
       b => b.roomId === selectedRoom.id && b.date === selectedDate && b.time === selectedTime
     );
 
-    if (isBooked) {
-      // Preempt existing user booking
-      const existingBooking = bookings.find(
-        b => b.roomId === selectedRoom.id && b.date === selectedDate && b.time === selectedTime
-      );
-      
-      setBookings(prev => prev.filter(b => b.id !== existingBooking?.id));
-      
-      const newBooking: Booking = {
-        id: `BK-${Date.now()}`,
-        roomId: selectedRoom.id,
-        roomName: selectedRoom.name,
-        date: selectedDate,
-        time: selectedTime,
-        title: meetingTitle || "Admin Override Session",
-        booker: "Admin.01 (SysOps)",
-        attendees: [...attendees]
-      };
+    const { startTime, endTime } = getSlotDates(selectedDate, selectedTime);
 
-      setBookings(prev => [...prev, newBooking]);
-      addAuditLog(
-        "Admin preempted booking",
-        `Admin overridden ${existingBooking?.booker || "user"}'s reservation for ${selectedRoom.name}`,
-        "ADM-OVR",
-        "gavel",
-        "text-error"
-      );
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomId: selectedRoom.id,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          title: meetingTitle || (isBooked ? "Admin Override Session" : "Project Sync"),
+          agenda: "Admin override booking",
+          attendees: attendees,
+          preempt: isBooked, // Override booking if conflict exists!
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to confirm booking");
+      }
+
       setIsSuccessModalOpen(true);
-      return;
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
     }
-
-    // Standard Direct Booking
-    const newBooking: Booking = {
-      id: `BK-${Date.now()}`,
-      roomId: selectedRoom.id,
-      roomName: selectedRoom.name,
-      date: selectedDate,
-      time: selectedTime,
-      title: meetingTitle || "Project Sync",
-      booker: "Admin.01 (SysOps)",
-      attendees: [...attendees]
-    };
-
-    setBookings(prev => [...prev, newBooking]);
-    addAuditLog(
-      "Admin booked room",
-      `Admin.01 booked ${selectedRoom.name} directly`,
-      "ADM-BOOK",
-      "add_circle",
-      "text-primary"
-    );
-    setIsSuccessModalOpen(true);
   };
 
-  const handleCancelBooking = (bookingId: string) => {
+  const handleCancelBooking = async (bookingId: string) => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
     if (confirm(`Cancel reservation for ${booking.roomName} at ${booking.time}?`)) {
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
-      addAuditLog(
-        "Booking Cancelled",
-        `Cancelled reservation for ${booking.roomName} by ${booking.booker}`,
-        "SYS-CANCEL",
-        "delete",
-        "text-error"
-      );
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to cancel booking");
+        }
+        fetchData();
+      } catch (err: any) {
+        alert(err.message);
+      }
     }
   };
 
-  const handleToggleMaintenance = (roomId: string) => {
-    setRooms(prev =>
-      prev.map(r => {
-        if (r.id === roomId) {
-          const nextStatus = r.status === "online" ? "maintenance" : "online";
-          addAuditLog(
-            `${r.name} status changed`,
-            `Admin set status to ${nextStatus === "online" ? "Online" : "Maintenance"}`,
-            "ADM-MAINT",
-            "build",
-            nextStatus === "online" ? "text-tertiary" : "text-secondary"
-          );
-          return { ...r, status: nextStatus };
-        }
-        return r;
-      })
-    );
+  const handleToggleMaintenance = async (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    const nextStatus = room.status === "online" ? "Maintenance" : "Available";
+
+    try {
+      const res = await fetch(`/api/rooms/${roomId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to toggle status");
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const filteredRooms = rooms.filter(room => {
@@ -523,7 +643,7 @@ export default function AdminPortal() {
             />
             <div className="flex flex-col">
               <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[100px]">
-                Admin.01
+                {userName}
               </span>
               <span className="font-label-sm text-label-sm text-on-surface-variant text-[11px] truncate">
                 SysOps Admin
@@ -674,7 +794,13 @@ export default function AdminPortal() {
                       <span className="material-symbols-outlined text-primary">meeting_room</span>
                       <h2 className="font-headline-md text-lg font-semibold">Resource Matrix</h2>
                     </div>
-                    <div className="flex gap-3 w-full sm:w-auto">
+                    <div className="flex gap-3 w-full sm:w-auto items-center">
+                      <button 
+                        onClick={() => setIsAddRoomModalOpen(true)}
+                        className="px-4 py-2 btn-gradient-primary text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:shadow-lg transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">add</span> Add Room
+                      </button>
                       <div className="relative flex-1 sm:w-64 rounded-lg">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
                         <input 
@@ -736,6 +862,9 @@ export default function AdminPortal() {
                                       setEditingRoom(room);
                                       setEditRoomName(room.name);
                                       setEditRoomSeats(room.seats);
+                                      setEditRoomLocation(room.location || "");
+                                      setEditRoomImage(room.image || "");
+                                      setEditRoomAmenities(room.amenities || []);
                                       setIsEditRoomModalOpen(true);
                                     }}
                                     className="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-white/5"
@@ -753,6 +882,13 @@ export default function AdminPortal() {
                                     title={isMaint ? "Clear Maintenance" : "Set Maintenance"}
                                   >
                                     <span className="material-symbols-outlined text-[18px]">build</span>
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteRoom(room.id)}
+                                    className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors rounded hover:bg-white/5"
+                                    title="Delete Room"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">delete</span>
                                   </button>
                                 </div>
                               </td>
@@ -1104,24 +1240,155 @@ export default function AdminPortal() {
           <div className="glass-panel max-w-md w-full rounded-2xl p-6 shadow-2xl relative z-10 flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
             <h3 className="font-headline-lg text-lg font-bold text-on-surface">Edit Room Details</h3>
             <div className="flex flex-col gap-3">
-              <label className="text-xs font-semibold text-outline">Room Designation</label>
-              <input type="text" value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)} className="w-full bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2.5 px-4 text-on-surface focus:outline-none focus:border-primary shadow-inner text-sm" />
-              <label className="text-xs font-semibold text-outline">Capacity (Pax)</label>
-              <input type="number" value={editRoomSeats} onChange={(e) => setEditRoomSeats(parseInt(e.target.value) || 1)} className="w-full bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2.5 px-4 text-on-surface focus:outline-none focus:border-primary shadow-inner text-sm" />
+              <div>
+                <label className="text-xs font-semibold text-outline">Room Designation</label>
+                <input type="text" value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-outline">Capacity (Pax)</label>
+                <input type="number" value={editRoomSeats} onChange={(e) => setEditRoomSeats(parseInt(e.target.value) || 1)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-outline">Location</label>
+                <input type="text" value={editRoomLocation} onChange={(e) => setEditRoomLocation(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-outline">Image URL</label>
+                <input type="text" value={editRoomImage} onChange={(e) => setEditRoomImage(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-outline">Amenities</label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {["video", "whiteboard", "projector", "tv"].map(amenity => {
+                    const isSelected = editRoomAmenities.includes(amenity);
+                    return (
+                      <button
+                        key={amenity}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setEditRoomAmenities(editRoomAmenities.filter(a => a !== amenity));
+                          } else {
+                            setEditRoomAmenities([...editRoomAmenities, amenity]);
+                          }
+                        }}
+                        className={`px-3 py-1 rounded-lg border text-xs font-semibold transition-all ${
+                          isSelected 
+                            ? "bg-primary/20 border-primary text-primary" 
+                            : "border-outline-variant/30 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+                        }`}
+                      >
+                        {amenity === "video" && "Video Conf"}
+                        {amenity === "whiteboard" && "Whiteboard"}
+                        {amenity === "projector" && "Projector"}
+                        {amenity === "tv" && "TV"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
             <div className="flex gap-3 justify-end mt-2">
               <button onClick={() => setIsEditRoomModalOpen(false)} className="px-4 py-2 bg-transparent text-on-surface hover:bg-surface-container rounded-lg border border-outline-variant/30 text-sm font-semibold transition-colors">Cancel</button>
               <button
-                onClick={() => {
-                  setRooms(prev =>
-                    prev.map(r => r.id === editingRoom.id ? { ...r, name: editRoomName, seats: editRoomSeats } : r)
-                  );
-                  addAuditLog("Resource updated", `Admin updated details for ${editingRoom.name}`, "ADM-EDIT", "edit", "text-primary");
-                  setIsEditRoomModalOpen(false);
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/rooms/${editingRoom.id}`, {
+                      method: "PATCH",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        name: editRoomName,
+                        capacity: editRoomSeats,
+                        location: editRoomLocation,
+                        heroImageUrl: editRoomImage.trim() || "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop",
+                        amenities: editRoomAmenities
+                      }),
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) {
+                      throw new Error(data.error || "Failed to update room");
+                    }
+
+                    fetchData();
+                    setIsEditRoomModalOpen(false);
+                  } catch (err: any) {
+                    alert(err.message);
+                  }
                 }}
                 className="px-4 py-2 btn-gradient-primary text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
               >
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Room Modal */}
+      {isAddRoomModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setIsAddRoomModalOpen(false)}></div>
+          <div className="glass-panel max-w-md w-full rounded-2xl p-6 shadow-2xl relative z-10 flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
+            <h3 className="font-headline-lg text-lg font-bold text-on-surface">Add New Room</h3>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-semibold text-outline">Room Designation</label>
+                <input type="text" value={addRoomName} onChange={(e) => setAddRoomName(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" placeholder="e.g. Gamma Meeting Room" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-outline">Capacity (Pax)</label>
+                <input type="number" value={addRoomSeats} onChange={(e) => setAddRoomSeats(parseInt(e.target.value) || 1)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-outline">Location</label>
+                <input type="text" value={addRoomLocation} onChange={(e) => setAddRoomLocation(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" placeholder="e.g. Floor 3, West Wing" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-outline">Image URL</label>
+                <input type="text" value={addRoomImage} onChange={(e) => setAddRoomImage(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" placeholder="Optional URL" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-outline">Amenities</label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {["video", "whiteboard", "projector", "tv"].map(amenity => {
+                    const isSelected = addRoomAmenities.includes(amenity);
+                    return (
+                      <button
+                        key={amenity}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setAddRoomAmenities(addRoomAmenities.filter(a => a !== amenity));
+                          } else {
+                            setAddRoomAmenities([...addRoomAmenities, amenity]);
+                          }
+                        }}
+                        className={`px-3 py-1 rounded-lg border text-xs font-semibold transition-all ${
+                          isSelected 
+                            ? "bg-primary/20 border-primary text-primary" 
+                            : "border-outline-variant/30 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+                        }`}
+                      >
+                        {amenity === "video" && "Video Conf"}
+                        {amenity === "whiteboard" && "Whiteboard"}
+                        {amenity === "projector" && "Projector"}
+                        {amenity === "tv" && "TV"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end mt-2">
+              <button onClick={() => setIsAddRoomModalOpen(false)} className="px-4 py-2 bg-transparent text-on-surface hover:bg-surface-container rounded-lg border border-outline-variant/30 text-sm font-semibold transition-colors">Cancel</button>
+              <button
+                onClick={handleAddRoomSubmit}
+                className="px-4 py-2 btn-gradient-primary text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
+              >
+                Add Room
               </button>
             </div>
           </div>

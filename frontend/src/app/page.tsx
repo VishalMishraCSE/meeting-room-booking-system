@@ -27,8 +27,9 @@ interface Booking {
 export default function BookingDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const role = "employee";
-  const [currentView, setCurrentView] = useState<string>("rooms"); // "rooms" | "bookings"
+  const [userName, setUserName] = useState<string>("Alex Rivers");
+  const [userRole, setUserRole] = useState<string>("Employee");
+  const [currentView, setCurrentView] = useState<string>("bookings"); // "bookings" | "rooms"
 
   // Unified reactive mock database state
   const [rooms, setRooms] = useState<Room[]>([
@@ -129,19 +130,86 @@ export default function BookingDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [capacityFilter, setCapacityFilter] = useState<string>("6-12");
   const [amenitiesFilter, setAmenitiesFilter] = useState<string[]>([]);
-  const [attendees, setAttendees] = useState<string[]>(["Sarah J.", "Mike T."]);
+  const [attendees, setAttendees] = useState<string[]>(["Harshith Yadav", "Malavika Yadav"]);
   const [meetingTitle, setMeetingTitle] = useState<string>("Q3 Strategy Sync");
   const [attendeeInput, setAttendeeInput] = useState<string>("");
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
+  // Calculate dates from selectedDate ("22" - "26") and selectedTime ("1:30 PM")
+  const getSlotDates = (dateStr: string, timeStr: string) => {
+    const day = parseInt(dateStr);
+    const year = 2026;
+    const month = 5; // June is index 5
+    
+    const [time, ampm] = timeStr.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+    
+    const startTime = new Date(year, month, day, hours, minutes, 0, 0);
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
+    return { startTime, endTime };
+  };
+
+  const fetchData = async () => {
+    try {
+      // Fetch rooms
+      const roomsRes = await fetch("/api/rooms");
+      const roomsData = await roomsRes.json();
+      if (roomsRes.ok && Array.isArray(roomsData)) {
+        const mappedRooms = roomsData.map((dbR: any) => ({
+          id: dbR.id.toString(),
+          name: dbR.name,
+          seats: dbR.capacity,
+          location: dbR.location || `Room ${dbR.roomNumber}, Floor ${dbR.floorId}`,
+          image: dbR.heroImageUrl || "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop",
+          amenities: dbR.amenities?.map((a: any) => a.name.toLowerCase()) || [],
+          status: dbR.status.toLowerCase() === "available" ? ("online" as const) : ("maintenance" as const)
+        }));
+        setRooms(mappedRooms);
+        if (mappedRooms.length > 0) {
+          setSelectedRoomId(mappedRooms[0].id);
+        }
+      }
+
+      // Fetch bookings
+      const bookingsRes = await fetch("/api/bookings");
+      const bookingsData = await bookingsRes.json();
+      if (bookingsRes.ok && Array.isArray(bookingsData)) {
+        const activeBookings = bookingsData.filter((b: any) => b.status !== 'Cancelled');
+        const mappedBookings = activeBookings.map((dbB: any) => {
+          const start = new Date(dbB.startTime);
+          const timeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return {
+            id: dbB.id.toString(),
+            roomId: dbB.roomId.toString(),
+            roomName: dbB.room?.name || "Unknown Room",
+            date: start.getDate().toString(),
+            time: timeStr,
+            title: dbB.title,
+            booker: dbB.user?.name || "Unknown",
+            attendees: dbB.attendees?.map((a: any) => a.email) || []
+          };
+        });
+        setBookings(mappedBookings);
+      }
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+    }
+  };
+
   // Initialize and Toggle Theme & Session Guard
   useEffect(() => {
     const storedRole = localStorage.getItem("userRole");
+    const storedName = localStorage.getItem("userName");
     if (!storedRole || storedRole !== "employee") {
       router.push("/login");
     } else {
       setLoading(false);
+      if (storedName) setUserName(storedName);
+      setUserRole(storedRole.charAt(0).toUpperCase() + storedRole.slice(1));
+      fetchData();
     }
 
     const storedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
@@ -169,6 +237,8 @@ export default function BookingDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("userRole");
     localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userId");
     router.push("/login");
   };
 
@@ -191,7 +261,7 @@ export default function BookingDashboard() {
     });
   };
 
-  const selectedRoom = rooms.find(r => r.id === selectedRoomId) || rooms[0];
+  const selectedRoom = rooms.find(r => r.id === selectedRoomId) || rooms[0] || { id: "0", name: "No Rooms", status: "maintenance" };
   const selectedRoomSlots = getTimeSlotsForRoom(selectedRoom.id, selectedDate);
 
   const isSlotAlreadyBooked = bookings.some(
@@ -200,7 +270,7 @@ export default function BookingDashboard() {
   const isSelectedRoomMaintenance = selectedRoom.status === "maintenance";
 
   // Booking confirm handler
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (selectedRoom.status === "maintenance") {
       alert("This room is currently under maintenance and cannot be booked.");
       return;
@@ -215,27 +285,53 @@ export default function BookingDashboard() {
       return;
     }
 
-    const newBooking: Booking = {
-      id: `BK-${Date.now()}`,
-      roomId: selectedRoom.id,
-      roomName: selectedRoom.name,
-      date: selectedDate,
-      time: selectedTime,
-      title: meetingTitle || "Project Sync",
-      booker: "Alex Rivers",
-      attendees: [...attendees]
-    };
+    const { startTime, endTime } = getSlotDates(selectedDate, selectedTime);
 
-    setBookings(prev => [...prev, newBooking]);
-    setIsSuccessModalOpen(true);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomId: selectedRoom.id,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          title: meetingTitle || "Project Sync",
+          agenda: "Scheduled via Lumina Spatial Management Suite",
+          attendees: attendees,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to submit booking");
+      }
+
+      setIsSuccessModalOpen(true);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const handleCancelBooking = (bookingId: string) => {
+  const handleCancelBooking = async (bookingId: string) => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
     if (confirm(`Cancel reservation for ${booking.roomName} at ${booking.time}?`)) {
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to cancel reservation");
+        }
+        fetchData();
+      } catch (err: any) {
+        alert(err.message);
+      }
     }
   };
 
@@ -343,20 +439,6 @@ export default function BookingDashboard() {
         <ul className="flex flex-col gap-stack-sm flex-1 mt-4">
           <li>
             <button 
-              onClick={() => setCurrentView("rooms")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
-                currentView === "rooms" 
-                  ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[20px]" style={currentView === "rooms" ? { fontVariationSettings: "'FILL' 1" } : {}}>meeting_room</span>
-              Rooms
-            </button>
-          </li>
-
-          <li>
-            <button 
               onClick={() => setCurrentView("bookings")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
                 currentView === "bookings" 
@@ -380,10 +462,10 @@ export default function BookingDashboard() {
             />
             <div className="flex flex-col">
               <span className="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[100px]">
-                Alex Rivers
+                {userName}
               </span>
               <span className="font-label-sm text-label-sm text-on-surface-variant text-[11px]">
-                Employee
+                {userRole}
               </span>
             </div>
           </div>

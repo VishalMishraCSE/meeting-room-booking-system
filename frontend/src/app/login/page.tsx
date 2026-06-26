@@ -28,14 +28,14 @@ export default function LoginPage() {
   // Set mock credentials when role changes
   useEffect(() => {
     if (selectedRole === "employee") {
-      setEmail("employee@lumina.com");
-      setPassword("employee123");
+      setEmail("harshithyadav.ittaboina@gmail.com");
+      setPassword("password123");
     } else if (selectedRole === "manager") {
-      setEmail("manager@lumina.com");
-      setPassword("manager123");
+      setEmail("saimalavikayadav@gmail.com");
+      setPassword("password123");
     } else if (selectedRole === "admin") {
-      setEmail("admin@lumina.com");
-      setPassword("admin123");
+      setEmail("vishalmishra.csm@gmail.com");
+      setPassword("password123");
     }
     setErrorMessage("");
   }, [selectedRole]);
@@ -52,48 +52,44 @@ export default function LoginPage() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage("");
 
-    // Simulate small latency for premium feels
-    setTimeout(() => {
-      let authenticated = false;
-      let targetRole = "";
-      let targetName = "";
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (email === "employee@lumina.com" && password === "employee123") {
-        authenticated = true;
-        targetRole = "employee";
-        targetName = "Alex Rivers";
-      } else if (email === "manager@lumina.com" && password === "manager123") {
-        authenticated = true;
-        targetRole = "manager";
-        targetName = "Sarah Jenkins";
-      } else if (email === "admin@lumina.com" && password === "admin123") {
-        authenticated = true;
-        targetRole = "admin";
-        targetName = "Admin.01";
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Authentication failed");
       }
 
-      if (authenticated) {
-        localStorage.setItem("userRole", targetRole);
-        localStorage.setItem("userName", targetName);
-        
-        // Redirect according to role
-        if (targetRole === "employee") {
-          router.push("/");
-        } else if (targetRole === "manager") {
-          router.push("/manager");
-        } else if (targetRole === "admin") {
-          router.push("/admin");
-        }
-      } else {
-        setErrorMessage("Invalid corporate credentials. Please try simulated roles.");
-        setIsSubmitting(false);
+      // Write to localStorage for client-side state
+      localStorage.setItem("userRole", data.user.role); // e.g. "employee", "manager", "admin"
+      localStorage.setItem("userName", data.user.name);
+      localStorage.setItem("userEmail", data.user.email);
+      localStorage.setItem("userId", data.user.id.toString());
+
+      // Redirect according to role
+      if (data.user.role === "employee") {
+        router.push("/");
+      } else if (data.user.role === "manager") {
+        router.push("/manager");
+      } else if (data.user.role === "admin") {
+        router.push("/admin");
       }
-    }, 800);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Invalid corporate credentials.");
+      setIsSubmitting(false);
+    }
   };
 
   // Generate 20 stars with fixed random positions to ensure consistency and avoid hydration mismatches
