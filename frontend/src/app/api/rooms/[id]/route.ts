@@ -12,16 +12,12 @@ async function getSessionUser() {
   try {
     const parsed = JSON.parse(sessionCookie.value);
     if (!parsed || !parsed.id) return null;
-    const dbUser = await prisma.user.findUnique({
-      where: { id: parsed.id }
-    });
-    if (!dbUser) return null;
     return {
-      id: dbUser.id,
-      name: dbUser.name,
-      email: dbUser.email,
-      role: dbUser.role.toLowerCase(),
-      isActive: dbUser.isActive
+      id: parsed.id,
+      name: parsed.name,
+      email: parsed.email,
+      role: parsed.role.toLowerCase(),
+      isActive: parsed.isActive
     };
   } catch {
     return null;

@@ -105,6 +105,10 @@ model Booking {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
+  @@index([roomId])
+  @@index([userId])
+  @@index([status])
+  @@index([startTime, endTime])
   @@map("bookings")
 }
 
@@ -115,6 +119,8 @@ model Attendee {
   email     String
   status    String  @default("Pending") // Pending, Accepted, Declined
 
+  @@index([bookingId])
+  @@index([email])
   @@map("attendees")
 }
 
@@ -126,6 +132,7 @@ model BookingHistory {
   performedBy String   // user email
   timestamp   DateTime @default(now())
 
+  @@index([bookingId])
   @@map("booking_histories")
 }
 
