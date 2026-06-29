@@ -648,4 +648,58 @@ export async function sendRsvpResponseEmail(
   });
 }
 
+// 9. Meeting Extension Notice Email HTML Template for Impacted Teams
+export async function sendMeetingExtensionNoticeEmail(
+  toEmail: string,
+  toName: string,
+  roomName: string,
+  location: string,
+  meetingTitle: string,
+  extensionDurationText: string,
+  reason: string = 'Preceding executive session ran over time'
+) {
+  const html = `
+    <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f59e0b;">
+      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${toName}</strong>,</p>
+      <p style="font-size: 14px; color: #f59e0b; line-height: 1.6; font-weight: bold;">
+        ⏱️ Important Room Schedule Update
+      </p>
+      <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
+        The meeting in <strong>${roomName}</strong> (${location}) preceding your scheduled session ("${meetingTitle}") has been extended by management (${extensionDurationText}).
+      </p>
+      <div style="background-color: #1e293b; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #f59e0b/30;">
+        <h3 style="color: #cbd5e1; margin-top: 0; font-size: 18px;">${meetingTitle}</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="color: #64748b; padding: 5px 0; width: 120px;">Room:</td>
+            <td style="color: #f8fafc; font-weight: bold;">${roomName}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b; padding: 5px 0;">Extension:</td>
+            <td style="color: #f59e0b; font-weight: bold;">+${extensionDurationText}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b; padding: 5px 0;">Reason:</td>
+            <td style="color: #cbd5e1;">${reason}</td>
+          </tr>
+        </table>
+      </div>
+      <p style="font-size: 13px; color: #94a3b8;">
+        Your reservation slot has been updated accordingly. Please log into Lumina Reserve to select an alternate room or view updated timings.
+      </p>
+      <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
+        Lumina Corporate Spatial Management Suite.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: toEmail,
+    subject: `Schedule Update: ${roomName} meeting extended by management`,
+    html,
+  });
+}
+
+
 

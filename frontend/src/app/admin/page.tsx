@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 interface Room {
@@ -22,6 +22,7 @@ interface Booking {
   title: string;
   booker: string;
   attendees: string[];
+  status: string;
 }
 
 interface AuditLog {
@@ -89,91 +90,36 @@ export default function AdminPortal() {
     }
   ]);
 
-  const [bookings, setBookings] = useState<Booking[]>([
-    {
-      id: "BK-001",
-      roomId: "olympus",
-      roomName: "Alpha Boardroom",
-      date: "23",
-      time: "1:00 PM",
-      title: "Sprint Planning",
-      booker: "Rahul S.",
-      attendees: ["Rahul S.", "Sarah J.", "Mike T."]
-    },
-    {
-      id: "BK-002",
-      roomId: "olympus",
-      roomName: "Alpha Boardroom",
-      date: "23",
-      time: "1:30 PM",
-      title: "Client Sync",
-      booker: "Priya M.",
-      attendees: ["Priya M.", "Alex R."]
-    },
-    {
-      id: "BK-003",
-      roomId: "titan",
-      roomName: "Beta Lab",
-      date: "23",
-      time: "1:00 PM",
-      title: "Design Review",
-      booker: "Emily W.",
-      attendees: ["Emily W.", "David L."]
-    },
-    {
-      id: "BK-004",
-      roomId: "titan",
-      roomName: "Beta Lab",
-      date: "23",
-      time: "1:30 PM",
-      title: "Design Review",
-      booker: "Emily W.",
-      attendees: ["Emily W.", "David L."]
-    }
-  ]);
-
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    {
-      id: "LOG-001",
-      title: "Beta Lab status changed",
-      description: "Admin.01 set status to Maintenance",
-      time: "10:42 AM",
-      code: "ID-8492",
-      icon: "build",
-      iconColor: "text-secondary"
-    },
-    {
-      id: "LOG-002",
-      title: "New resource provisioned",
-      description: "System auto-scaled 'Virtual Instance X1'",
-      time: "09:15 AM",
-      code: "SYS-AUTO",
-      icon: "add",
-      iconColor: "text-primary"
-    },
-    {
-      id: "LOG-003",
-      title: "Admin authenticated",
-      description: "Session established from IP 192.168.1.45",
-      time: "08:00 AM",
-      code: "SEC-LOGIN",
-      icon: "login",
-      iconColor: "text-tertiary"
-    }
-  ]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // UI state for standard Booking panel
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
   const [selectedRoomId, setSelectedRoomId] = useState<string>("olympus");
-  const [selectedDate, setSelectedDate] = useState<string>("23");
-  const [selectedTime, setSelectedTime] = useState<string>("2:30 PM");
+  const [selectedDate, setSelectedDate] = useState<string>(now.getDate().toString());
+  const [selectedTime, setSelectedTime] = useState<string>("10:00 AM");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [capacityFilter, setCapacityFilter] = useState<string>("6-12");
   const [amenitiesFilter, setAmenitiesFilter] = useState<string[]>([]);
-  const [attendees, setAttendees] = useState<string[]>(["Sarah J.", "Mike T."]);
-  const [meetingTitle, setMeetingTitle] = useState<string>("Q3 Strategy Sync");
+  const [attendees, setAttendees] = useState<string[]>([]);
+  const [meetingTitle, setMeetingTitle] = useState<string>("Project Sync");
   const [attendeeInput, setAttendeeInput] = useState<string>("");
+  const [showAttendeeDropdown, setShowAttendeeDropdown] = useState<boolean>(false);
+  const [corporateUsers, setCorporateUsers] = useState<{ id: number; name: string; email: string; role: string }[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+  const [showNotificationsPopover, setShowNotificationsPopover] = useState<boolean>(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // Custom Extension Modal State
+  const [isExtendModalOpen, setIsExtendModalOpen] = useState<boolean>(false);
+  const [targetExtendBooking, setTargetExtendBooking] = useState<any>(null);
+  const [customExtensionMinutes, setCustomExtensionMinutes] = useState<string>("30");
+  const [isExtending, setIsExtending] = useState<boolean>(false);
 
   const [locateQuery, setLocateQuery] = useState<string>("");
   const [isEditRoomModalOpen, setIsEditRoomModalOpen] = useState<boolean>(false);
@@ -192,17 +138,44 @@ export default function AdminPortal() {
   const [addRoomImage, setAddRoomImage] = useState<string>("");
   const [addRoomAmenities, setAddRoomAmenities] = useState<string[]>([]);
 
+  const monthsList = useMemo(() => [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ], []);
+
+  const dateReelDays = useMemo(() => {
+    const days = [];
+    const numDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    for (let i = 1; i <= numDays; i++) {
+      const d = new Date(selectedYear, selectedMonth, i);
+      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+      const monthName = d.toLocaleDateString("en-US", { month: "short" });
+      days.push({
+        val: i.toString(),
+        dayNum: i,
+        dayName,
+        monthName,
+        fullLabel: `${dayName}, ${monthName} ${i}`
+      });
+    }
+    return days;
+  }, [selectedMonth, selectedYear]);
+
+  const morningSlots = useMemo(() => ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"], []);
+  const afternoonSlots = useMemo(() => ["12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM"], []);
+  const eveningSlots = useMemo(() => ["4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"], []);
+  const allSlots = useMemo(() => [...morningSlots, ...afternoonSlots, ...eveningSlots], [morningSlots, afternoonSlots, eveningSlots]);
+
   const getSlotDates = (dateStr: string, timeStr: string) => {
     const day = parseInt(dateStr);
-    const year = 2026;
-    const month = 5; // June is index 5
-    
-    const [time, ampm] = timeStr.split(" ");
-    let [hours, minutes] = time.split(":").map(Number);
+    const parts = timeStr.split(" ");
+    const timeVal = parts[0] || "10:00";
+    const ampm = parts[1] || "AM";
+    let [hours, minutes] = timeVal.split(":").map(Number);
     if (ampm === "PM" && hours < 12) hours += 12;
     if (ampm === "AM" && hours === 12) hours = 0;
     
-    const startTime = new Date(year, month, day, hours, minutes, 0, 0);
+    const startTime = new Date(selectedYear, selectedMonth, day, hours, minutes, 0, 0);
     const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
     return { startTime, endTime };
   };
@@ -229,7 +202,11 @@ export default function AdminPortal() {
           seats: dbR.capacity,
           location: dbR.location || `Room ${dbR.roomNumber}, Floor ${dbR.floorId}`,
           image: dbR.heroImageUrl || "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop",
-          amenities: dbR.amenities?.map((a: any) => a.name.toLowerCase()) || [],
+          amenities: dbR.amenities?.map((a: any) => {
+            const name = a.name.toLowerCase();
+            if (name.includes("video") || name.includes("conf")) return "video";
+            return name;
+          }) || [],
           status: dbR.status.toLowerCase() === "available" ? ("online" as const) : ("maintenance" as const)
         }));
         setRooms(mappedRooms);
@@ -242,20 +219,43 @@ export default function AdminPortal() {
         const activeBookings = bookingsData.filter((b: any) => b.status !== 'Cancelled');
         const mappedBookings = activeBookings.map((dbB: any) => {
           const start = new Date(dbB.startTime);
-          const timeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          let hours = start.getHours();
+          const minutes = start.getMinutes();
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          hours = hours % 12;
+          hours = hours ? hours : 12;
+          const minStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
+          const timeStr = `${hours}:${minStr} ${ampm}`;
+
           return {
             id: dbB.id.toString(),
             roomId: dbB.roomId.toString(),
             roomName: dbB.room?.name || "Unknown Room",
+            month: start.getMonth(),
+            year: start.getFullYear(),
             date: start.getDate().toString(),
             time: timeStr,
             title: dbB.title,
             booker: dbB.user?.name || "Unknown",
-            attendees: dbB.attendees?.map((a: any) => a.email) || []
+            attendees: dbB.attendees?.map((a: any) => a.email) || [],
+            status: dbB.status
           };
         });
         setBookings(mappedBookings);
       }
+
+      // Fetch corporate users for attendee search autocomplete
+      fetch("/api/users").then(res => res.json()).then(data => {
+        if (Array.isArray(data)) setCorporateUsers(data);
+      }).catch(e => console.error("Failed to fetch users:", e));
+
+      // Fetch in-app notifications
+      fetch("/api/notifications").then(res => res.json()).then(data => {
+        if (data && Array.isArray(data.notifications)) {
+          setNotifications(data.notifications);
+          setUnreadNotificationsCount(data.unreadCount || 0);
+        }
+      }).catch(e => console.error("Failed to fetch notifications:", e));
 
       if (logsRes.ok && Array.isArray(logsData)) {
         setAuditLogs(logsData);
@@ -376,40 +376,47 @@ export default function AdminPortal() {
     router.push("/login");
   };
 
-  // Dynamic slot generation based on bookings and maintenance
+  // Dynamic slot generation based on live bookings and room status
   const getTimeSlotsForRoom = (roomId: string, date: string) => {
-    const slots = ["1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM"];
-    return slots.map(time => {
+    return allSlots.map(time => {
       const room = rooms.find(r => r.id === roomId);
       if (room?.status === "maintenance") {
         return { time, status: "maintenance" as const, booker: "" };
       }
-      const booking = bookings.find(b => b.roomId === roomId && b.date === date && b.time === time);
+      const booking = bookings.find(b => b.roomId === roomId && (b as any).month === selectedMonth && (b as any).year === selectedYear && b.date === date && b.time === time);
       if (booking) {
         return { time, status: "booked" as const, booker: booking.booker };
-      }
-      if (time === "3:30 PM" && roomId !== "titan") {
-        return { time, status: "warning" as const, booker: "" };
       }
       return { time, status: "available" as const, booker: "" };
     });
   };
 
-  const selectedRoom = rooms.find(r => r.id === selectedRoomId) || rooms[0] || { id: "0", name: "No Rooms", status: "maintenance" };
-  const selectedRoomSlots = getTimeSlotsForRoom(selectedRoom.id, selectedDate);
+  const selectedRoom = useMemo(() => {
+    return rooms.find(r => r.id === selectedRoomId) || rooms[0] || { id: "0", name: "No Rooms", status: "maintenance" };
+  }, [rooms, selectedRoomId]);
 
-  const isSlotAlreadyBooked = bookings.some(
-    b => b.roomId === selectedRoom.id && b.date === selectedDate && b.time === selectedTime
-  );
+  const selectedRoomSlots = useMemo(() => {
+    return getTimeSlotsForRoom(selectedRoom.id, selectedDate);
+  }, [selectedRoom.id, selectedDate, selectedMonth, selectedYear, bookings, rooms, allSlots]);
+
+  const isSlotAlreadyBooked = useMemo(() => {
+    return bookings.some(
+      b => b.roomId === selectedRoom.id && (b as any).month === selectedMonth && (b as any).year === selectedYear && b.date === selectedDate && b.time === selectedTime
+    );
+  }, [bookings, selectedRoom.id, selectedDate, selectedMonth, selectedYear, selectedTime]);
+
   const isSelectedRoomMaintenance = selectedRoom.status === "maintenance";
 
   // Booking confirm handler with Admin Preemption override logic
   const handleConfirmBooking = async () => {
+    if (isSubmitting) return;
+
     const isBooked = bookings.some(
       b => b.roomId === selectedRoom.id && b.date === selectedDate && b.time === selectedTime
     );
 
     const { startTime, endTime } = getSlotDates(selectedDate, selectedTime);
+    setIsSubmitting(true);
 
     try {
       const res = await fetch("/api/bookings", {
@@ -424,7 +431,7 @@ export default function AdminPortal() {
           title: meetingTitle || (isBooked ? "Admin Override Session" : "Project Sync"),
           agenda: "Admin override booking",
           attendees: attendees,
-          preempt: isBooked, // Override booking if conflict exists!
+          preempt: true, // Admin always has preempt authority
         }),
       });
 
@@ -434,9 +441,11 @@ export default function AdminPortal() {
       }
 
       setIsSuccessModalOpen(true);
-      fetchData();
+      await fetchData();
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -457,6 +466,41 @@ export default function AdminPortal() {
       } catch (err: any) {
         alert(err.message);
       }
+    }
+  };
+
+  // Extension Handler
+  const handleOpenExtendModal = (booking: any) => {
+    setTargetExtendBooking(booking);
+    setCustomExtensionMinutes("30");
+    setIsExtendModalOpen(true);
+  };
+
+  const handleExecuteExtend = async () => {
+    if (!targetExtendBooking || isExtending) return;
+    const mins = parseInt(customExtensionMinutes, 10);
+    if (isNaN(mins) || mins <= 0) {
+      alert("Please enter a valid extension duration in minutes.");
+      return;
+    }
+    setIsExtending(true);
+    try {
+      const res = await fetch(`/api/bookings/${targetExtendBooking.id}/extend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extensionMinutes: mins }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to extend meeting");
+      }
+      alert(data.message || "Meeting extended successfully!");
+      setIsExtendModalOpen(false);
+      await fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsExtending(false);
     }
   };
 
@@ -638,6 +682,20 @@ export default function AdminPortal() {
               Audit Trail
             </button>
           </li>
+
+          <li>
+            <button 
+              onClick={() => setCurrentView("active_reservations")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
+                currentView === "active_reservations" 
+                  ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "active_reservations" ? { fontVariationSettings: "'FILL' 1" } : {}}>update</span>
+              Active Reservations
+            </button>
+          </li>
         </ul>
 
         {/* User Profile Card */}
@@ -692,7 +750,7 @@ export default function AdminPortal() {
             )}
             
             {/* Trailing Icons */}
-            <div className="flex items-center gap-2 text-on-surface-variant">
+            <div className="flex items-center gap-2 text-on-surface-variant relative">
               <button 
                 onClick={toggleTheme} 
                 className="p-2 rounded-full hover:bg-surface-container-highest hover:text-primary transition-colors" 
@@ -700,10 +758,68 @@ export default function AdminPortal() {
               >
                 <span className="material-symbols-outlined">{theme === "dark" ? "light_mode" : "dark_mode"}</span>
               </button>
-              <button className="p-2 rounded-full hover:bg-surface-container-highest hover:text-primary transition-colors relative group">
+
+              {/* In-App Notifications Bell */}
+              <button 
+                onClick={() => {
+                  setShowNotificationsPopover(!showNotificationsPopover);
+                  if (!showNotificationsPopover && unreadNotificationsCount > 0) {
+                    fetch("/api/notifications", { method: "PATCH" });
+                    setUnreadNotificationsCount(0);
+                  }
+                }}
+                className="p-2 rounded-full hover:bg-surface-container-highest hover:text-primary transition-colors relative"
+                title="In-App Notifications"
+              >
                 <span className="material-symbols-outlined">notifications</span>
-                <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] bg-error text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-surface animate-pulse">
+                    {unreadNotificationsCount}
+                  </span>
+                )}
               </button>
+
+              {/* Notifications Dropdown Popover */}
+              {showNotificationsPopover && (
+                <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-surface-container-high border border-outline-variant/30 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-3.5 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-lowest/50">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-sm">notifications_active</span>
+                      <h4 className="font-title-md text-xs font-bold text-on-surface">In-App Notifications</h4>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        fetch("/api/notifications", { method: "PATCH" });
+                        setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+                        setUnreadNotificationsCount(0);
+                      }}
+                      className="text-[11px] text-primary hover:underline font-semibold"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto divide-y divide-outline-variant/10">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-on-surface-variant flex flex-col items-center gap-2">
+                        <span className="material-symbols-outlined text-outline text-3xl">notifications_off</span>
+                        <span>No notifications yet</span>
+                      </div>
+                    ) : (
+                      notifications.map(n => (
+                        <div key={n.id} className={`p-3 text-xs transition-colors ${n.isRead ? 'opacity-70 bg-transparent' : 'bg-primary/10 font-medium'}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`font-bold text-[11px] ${n.type === 'success' ? 'text-emerald-400' : n.type === 'error' ? 'text-red-400' : n.type === 'warning' ? 'text-amber-400' : 'text-primary'}`}>
+                              {n.title}
+                            </span>
+                            <span className="text-[10px] text-outline">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p className="text-on-surface-variant text-[11px] leading-relaxed">{n.message}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="w-px h-6 bg-white/20"></div>
               <span className="font-label-sm text-xs font-semibold text-outline tracking-wider bg-surface-container-high px-3 py-1.5 rounded-full border border-outline-variant/20 uppercase">
                 Admin
@@ -715,6 +831,82 @@ export default function AdminPortal() {
         {/* Dynamic Content Views */}
         <div className="flex-1 mt-0 md:mt-20 overflow-y-auto">
           
+          {/* VIEW: ACTIVE RESERVATIONS & EXTENSION */}
+          {currentView === "active_reservations" && (
+            <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-2">
+                <div>
+                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface">Active Reservations</h1>
+                  <p className="font-body-md text-on-surface-variant mt-1">Confirmed workspace room schedules with admin preemption and meeting extension controls.</p>
+                </div>
+              </div>
+
+              {bookings.length === 0 ? (
+                <div className="glass-panel rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
+                  <span className="material-symbols-outlined text-outline text-5xl">event_busy</span>
+                  <h3 className="font-headline-md text-lg font-bold text-on-surface">No Active Reservations</h3>
+                  <p className="text-xs text-on-surface-variant max-w-sm">No active confirmed bookings exist in the system right now.</p>
+                </div>
+              ) : (
+                <div className="glass-panel rounded-xl overflow-hidden shadow-lg border border-outline-variant/20">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[750px]">
+                      <thead>
+                        <tr className="bg-white/[0.02] border-b border-white/5 font-label-sm text-xs text-on-surface-variant uppercase tracking-wider">
+                          <th className="p-4 font-semibold">Booking ID</th>
+                          <th className="p-4 font-semibold">Room Name</th>
+                          <th className="p-4 font-semibold">Schedule</th>
+                          <th className="p-4 font-semibold">Title</th>
+                          <th className="p-4 font-semibold">Status</th>
+                          <th className="p-4 font-semibold">Reserved By</th>
+                          <th className="p-4 font-semibold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="font-body-md text-sm divide-y divide-white/5">
+                        {bookings.map((booking) => (
+                          <tr key={booking.id} className="hover:bg-white/[0.01] transition-colors">
+                            <td className="p-4 font-mono text-xs text-outline">{booking.id}</td>
+                            <td className="p-4 font-bold text-on-surface">{booking.roomName}</td>
+                            <td className="p-4 text-xs font-semibold text-on-surface-variant">
+                              Date {booking.date} · {booking.time}
+                            </td>
+                            <td className="p-4 text-on-surface-variant font-medium">{booking.title}</td>
+                            <td className="p-4">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                Approved
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-xs font-semibold text-on-surface">
+                                {booking.booker}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right flex items-center justify-end gap-2">
+                              <button 
+                                onClick={() => handleOpenExtendModal(booking)}
+                                className="text-xs font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-lg border border-amber-500/30 transition-all flex items-center gap-1 shadow-sm"
+                                title="Extend meeting duration & notify upcoming teams"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">update</span> Extend
+                              </button>
+                              <button 
+                                onClick={() => handleCancelBooking(booking.id)}
+                                className="text-xs font-semibold text-error hover:underline bg-error/5 hover:bg-error/10 px-3 py-1.5 rounded-lg border border-error/15 transition-all"
+                              >
+                                Cancel
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </main>
+          )}
+
           {/* VIEW: TELEMETRY DASHBOARD */}
           {currentView === "dashboard" && (
             <main className="p-stack-lg flex flex-col gap-6 max-w-[1440px] mx-auto w-full">
@@ -1035,8 +1227,8 @@ export default function AdminPortal() {
                 </div>
               </div>
 
-              <div className="flex flex-col lg:flex-row gap-gutter h-full overflow-hidden">
-                <section className="lg:w-[60%] flex flex-col h-full bg-surface-container-lowest/30 rounded-2xl border border-outline-variant/10 overflow-hidden shadow-inner">
+              <div className="flex flex-col xl:flex-row gap-6 h-full min-h-0 overflow-y-auto xl:overflow-hidden">
+                <section className="flex-1 min-w-0 flex flex-col h-full bg-surface-container-lowest/30 rounded-2xl border border-outline-variant/10 overflow-hidden shadow-inner">
                   <div className="p-5 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low/20 shrink-0">
                     <h2 className="font-title-md text-base text-on-surface flex items-center gap-2 font-semibold">
                       <span className="material-symbols-outlined text-primary">view_cozy</span> Room Explorer (Admin Mode)
@@ -1098,7 +1290,7 @@ export default function AdminPortal() {
                   </div>
                 </section>
 
-                <aside className="lg:w-[40%] flex flex-col h-full bg-surface-container-low/40 backdrop-blur-xl rounded-2xl border border-outline-variant/20 shadow-2xl overflow-hidden relative">
+                <aside className="w-full xl:w-[420px] 2xl:w-[460px] shrink-0 flex flex-col h-full bg-surface-container-low/40 backdrop-blur-xl rounded-2xl border border-outline-variant/20 shadow-2xl overflow-hidden relative">
                   <div className="h-1 w-full bg-gradient-to-r from-primary via-secondary to-primary-container"></div>
                   <div className="p-5 overflow-y-auto flex-1 flex flex-col gap-6 hide-scrollbar relative">
                     <div>
@@ -1108,20 +1300,88 @@ export default function AdminPortal() {
                       </p>
                     </div>
 
-                    <div className="relative">
-                      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-2 -mx-2 px-2">
-                        {["22", "23", "24", "25", "26"].map((d) => {
-                          const isActive = selectedDate === d;
+                    <div className="relative flex flex-col gap-3">
+                      {/* Month & Year Header Control */}
+                      <div className="flex items-center justify-between bg-surface-container-high/50 p-2.5 rounded-xl border border-outline-variant/30">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
+                          <select 
+                            value={selectedMonth} 
+                            onChange={(e) => {
+                              setSelectedMonth(parseInt(e.target.value));
+                              setSelectedDate("1");
+                            }}
+                            className="bg-transparent font-title-md text-sm font-bold text-on-surface focus:outline-none cursor-pointer pr-1"
+                          >
+                            {monthsList.map((mName, idx) => (
+                              <option key={mName} value={idx} className="bg-surface text-on-surface">
+                                {mName}
+                              </option>
+                            ))}
+                          </select>
+                          <select 
+                            value={selectedYear} 
+                            onChange={(e) => {
+                              setSelectedYear(parseInt(e.target.value));
+                              setSelectedDate("1");
+                            }}
+                            className="bg-transparent font-title-md text-sm font-bold text-primary focus:outline-none cursor-pointer"
+                          >
+                            {[2026, 2027].map(y => (
+                              <option key={y} value={y} className="bg-surface text-on-surface">{y}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => {
+                              if (selectedMonth === 0) {
+                                setSelectedMonth(11);
+                                setSelectedYear(selectedYear - 1);
+                              } else {
+                                setSelectedMonth(selectedMonth - 1);
+                              }
+                              setSelectedDate("1");
+                            }}
+                            className="p-1 rounded-lg hover:bg-surface-container-highest text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
+                            title="Previous Month"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (selectedMonth === 11) {
+                                setSelectedMonth(0);
+                                setSelectedYear(selectedYear + 1);
+                              } else {
+                                setSelectedMonth(selectedMonth + 1);
+                              }
+                              setSelectedDate("1");
+                            }}
+                            className="p-1 rounded-lg hover:bg-surface-container-highest text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
+                            title="Next Month"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Day Scroll Reel */}
+                      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-1 -mx-2 px-2 snap-x scroll-smooth">
+                        {dateReelDays.map((d) => {
+                          const isActive = selectedDate === d.val;
                           return (
                             <button 
-                              key={d}
-                              onClick={() => setSelectedDate(d)}
-                              className={isActive 
-                                ? "flex flex-col items-center justify-center min-w-[72px] py-3.5 px-2 rounded-xl bg-gradient-to-b from-primary-container/20 to-primary/10 border-2 border-primary text-primary shadow-lg transform scale-105 transition-all relative font-bold"
-                                : "flex flex-col items-center justify-center min-w-[64px] py-3 px-2 rounded-xl border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest transition-all duration-200"
-                              }
+                              key={d.val}
+                              onClick={() => setSelectedDate(d.val)}
+                              className={`snap-center flex flex-col items-center justify-center min-w-[56px] py-2.5 px-2 rounded-xl border transition-all duration-200 shrink-0 ${
+                                isActive 
+                                  ? "bg-gradient-to-b from-primary-container/30 to-primary/20 border-2 border-primary text-primary shadow-lg font-bold scale-105"
+                                  : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
+                              }`}
                             >
-                              <span className="font-title-md text-sm font-bold">{d}</span>
+                              <span className="text-[10px] uppercase font-semibold opacity-80">{d.dayName}</span>
+                              <span className="font-title-md text-base font-bold">{d.dayNum}</span>
                             </button>
                           );
                         })}
@@ -1129,57 +1389,71 @@ export default function AdminPortal() {
                     </div>
 
                     <div className="flex flex-col gap-4">
-                      <div className="bg-surface-container-lowest/50 rounded-xl border border-outline-variant/20 p-4 shadow-inner">
-                        <h4 className="font-label-md text-xs text-outline mb-3 flex items-center gap-2 font-semibold">
-                          <span className="material-symbols-outlined text-[16px]">light_mode</span> Select Time Slot
-                        </h4>
-                        <div className="grid grid-cols-3 gap-2">
-                          {selectedRoomSlots.map((slot) => {
-                            const isMaintenance = slot.status === "maintenance";
-                            const isBooked = slot.status === "booked";
-                            
-                            if (isMaintenance) {
-                              return (
-                                <button 
-                                  key={slot.time}
-                                  disabled
-                                  className="py-2.5 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed"
-                                >
-                                  <span>Maint</span>
-                                </button>
-                              );
-                            }
-
-                            if (isBooked) {
+                      <div className="bg-surface-container-lowest/50 rounded-xl border border-outline-variant/20 p-4 shadow-inner flex flex-col gap-4">
+                        {/* Morning Section */}
+                        <div>
+                          <h4 className="font-label-md text-xs text-outline mb-2 flex items-center gap-1.5 font-semibold">
+                            <svg className="w-4 h-4 text-amber-400 shrink-0 inline-block" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"></path></svg>
+                            Morning (8:00 AM - 11:30 AM)
+                          </h4>
+                          <div className="grid grid-cols-4 gap-2">
+                            {selectedRoomSlots.filter(s => morningSlots.includes(s.time)).map((slot) => {
+                              const isMaintenance = slot.status === "maintenance";
+                              const isBooked = slot.status === "booked";
+                              if (isMaintenance) return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
+                              if (isBooked) return (<button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 px-1 rounded-lg border text-xs font-bold relative transition-all flex items-center justify-center gap-1 ${selectedTime === slot.time ? 'bg-gradient-to-r from-red-600 to-red-800 text-white border-red-500 scale-105 shadow-lg' : 'border-red-500/40 bg-red-950/30 text-red-300 hover:bg-red-900/40 cursor-pointer shadow-sm'}`} title={slot.booker ? `Booked by ${slot.booker}. Click to preempt (Admin Override).` : "Booked slot. Click to preempt."}><span className="line-through">{slot.time}</span><span className="material-symbols-outlined text-[12px] text-red-400 font-bold">bolt</span><span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-surface animate-pulse"></span></button>);
                               const isSelected = selectedTime === slot.time;
                               return (
-                                <button 
-                                  key={slot.time}
-                                  onClick={() => setSelectedTime(slot.time)}
-                                  className={`py-2.5 rounded-lg border relative group font-label-md text-xs transition-all font-semibold ${
-                                    isSelected 
-                                      ? "bg-gradient-to-r from-red-600 to-red-800 text-white border-red-500 scale-105 shadow-[0_0_15px_rgba(239,68,68,0.5)]" 
-                                      : "border-red-500/30 bg-red-950/10 text-red-400 hover:bg-red-950/20"
-                                  }`}
-                                  title={`Booked by ${slot.booker}. Click to override.`}
-                                >
+                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
                                   {slot.time}
-                                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border border-background"></span>
                                 </button>
                               );
-                            }
-                            
-                            const isSelected = selectedTime === slot.time;
-                            let btnClass = "py-2.5 rounded-lg border border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20 transition-colors font-label-md text-xs font-semibold";
-                            if (isSelected) {
-                              btnClass = "py-2.5 rounded-lg bg-gradient-to-r from-primary-container to-secondary-container text-white font-label-md text-xs shadow-lg border border-primary font-bold scale-105 transform transition-transform";
-                            }
-                            return (
-                              <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={btnClass}>
-                                {slot.time}
-                              </button>
-                            );
-                          })}
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Afternoon Section */}
+                        <div>
+                          <h4 className="font-label-md text-xs text-outline mb-2 flex items-center gap-1.5 font-semibold">
+                            <svg className="w-4 h-4 text-orange-400 shrink-0 inline-block" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42m12.72-12.72l1.42-1.42"></path></svg>
+                            Afternoon (12:00 PM - 3:30 PM)
+                          </h4>
+                          <div className="grid grid-cols-4 gap-2">
+                            {selectedRoomSlots.filter(s => afternoonSlots.includes(s.time)).map((slot) => {
+                              const isMaintenance = slot.status === "maintenance";
+                              const isBooked = slot.status === "booked";
+                              if (isMaintenance) return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
+                              if (isBooked) return (<button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 px-1 rounded-lg border text-xs font-bold relative transition-all flex items-center justify-center gap-1 ${selectedTime === slot.time ? 'bg-gradient-to-r from-red-600 to-red-800 text-white border-red-500 scale-105 shadow-lg' : 'border-red-500/40 bg-red-950/30 text-red-300 hover:bg-red-900/40 cursor-pointer shadow-sm'}`} title={slot.booker ? `Booked by ${slot.booker}. Click to preempt (Admin Override).` : "Booked slot. Click to preempt."}><span className="line-through">{slot.time}</span><span className="material-symbols-outlined text-[12px] text-red-400 font-bold">bolt</span><span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-surface animate-pulse"></span></button>);
+                              const isSelected = selectedTime === slot.time;
+                              return (
+                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
+                                  {slot.time}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Evening Section */}
+                        <div>
+                          <h4 className="font-label-md text-xs text-outline mb-2 flex items-center gap-1.5 font-semibold">
+                            <svg className="w-4 h-4 text-indigo-400 shrink-0 inline-block" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            Evening (4:00 PM - 7:00 PM)
+                          </h4>
+                          <div className="grid grid-cols-4 gap-2">
+                            {selectedRoomSlots.filter(s => eveningSlots.includes(s.time)).map((slot) => {
+                              const isMaintenance = slot.status === "maintenance";
+                              const isBooked = slot.status === "booked";
+                              if (isMaintenance) return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
+                              if (isBooked) return (<button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 px-1 rounded-lg border text-xs font-bold relative transition-all flex items-center justify-center gap-1 ${selectedTime === slot.time ? 'bg-gradient-to-r from-red-600 to-red-800 text-white border-red-500 scale-105 shadow-lg' : 'border-red-500/40 bg-red-950/30 text-red-300 hover:bg-red-900/40 cursor-pointer shadow-sm'}`} title={slot.booker ? `Booked by ${slot.booker}. Click to preempt (Admin Override).` : "Booked slot. Click to preempt."}><span className="line-through">{slot.time}</span><span className="material-symbols-outlined text-[12px] text-red-400 font-bold">bolt</span><span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-surface animate-pulse"></span></button>);
+                              const isSelected = selectedTime === slot.time;
+                              return (
+                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
+                                  {slot.time}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1188,6 +1462,67 @@ export default function AdminPortal() {
                       <div className="relative">
                         <label className="absolute -top-2 left-3 bg-surface-container-low px-1 font-label-sm text-[10px] text-primary z-10 font-semibold">Meeting Title</label>
                         <input className="w-full bg-surface-container-highest/30 border border-primary/50 rounded-lg py-3 px-4 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary shadow-inner font-body-md text-sm transition-shadow" type="text" value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)}/>
+                      </div>
+
+                      {/* Add Attendees with Dynamic Corporate User Autocomplete */}
+                      <div className="relative">
+                        <label className="absolute -top-2 left-3 bg-surface-container-low px-1 font-label-sm text-[10px] text-primary z-10 font-semibold">Add Attendees</label>
+                        <div className="flex flex-wrap gap-1.5 p-2 bg-surface-container-highest/30 border border-primary/50 rounded-lg min-h-[46px] focus-within:ring-1 focus-within:ring-primary shadow-inner">
+                          {attendees.map((email) => {
+                            const corpUser = corporateUsers.find(u => u.email === email);
+                            return (
+                              <span key={email} className="inline-flex items-center gap-1 bg-primary/20 text-primary border border-primary/30 text-xs px-2.5 py-1 rounded-md font-medium">
+                                {corpUser ? corpUser.name : email}
+                                <button type="button" onClick={() => setAttendees(attendees.filter(a => a !== email))} className="hover:text-red-400 text-xs font-bold ml-1">×</button>
+                              </span>
+                            );
+                          })}
+                          <input
+                            type="text"
+                            placeholder={attendees.length === 0 ? "Type name or email (e.g. Harshith)..." : "Add more..."}
+                            className="bg-transparent text-xs text-on-surface focus:outline-none flex-1 min-w-[140px] py-1 px-1"
+                            value={attendeeInput}
+                            onChange={(e) => {
+                              setAttendeeInput(e.target.value);
+                              setShowAttendeeDropdown(true);
+                            }}
+                            onFocus={() => setShowAttendeeDropdown(true)}
+                          />
+                        </div>
+
+                        {/* Dynamic Corporate User Autocomplete Dropdown */}
+                        {showAttendeeDropdown && attendeeInput.trim().length > 0 && (
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-surface-container-high border border-outline-variant/30 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto divide-y divide-outline-variant/10">
+                            {corporateUsers.filter(u => 
+                              !attendees.includes(u.email) && 
+                              (u.name.toLowerCase().includes(attendeeInput.toLowerCase()) || u.email.toLowerCase().includes(attendeeInput.toLowerCase()))
+                            ).length === 0 ? (
+                              <div className="p-3 text-xs text-on-surface-variant text-center">No matching corporate users</div>
+                            ) : (
+                              corporateUsers.filter(u => 
+                                !attendees.includes(u.email) && 
+                                (u.name.toLowerCase().includes(attendeeInput.toLowerCase()) || u.email.toLowerCase().includes(attendeeInput.toLowerCase()))
+                              ).map(u => (
+                                <button
+                                  key={u.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setAttendees([...attendees, u.email]);
+                                    setAttendeeInput("");
+                                    setShowAttendeeDropdown(false);
+                                  }}
+                                  className="w-full text-left p-2.5 hover:bg-primary/10 transition-colors flex items-center justify-between group"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-bold text-on-surface group-hover:text-primary">{u.name}</span>
+                                    <span className="text-[10px] text-on-surface-variant">{u.email}</span>
+                                  </div>
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-surface-container-highest text-primary font-semibold uppercase">{u.role}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1200,14 +1535,17 @@ export default function AdminPortal() {
                     
                     <button 
                       onClick={handleConfirmBooking}
+                      disabled={isSubmitting}
                       className={`w-full py-4 rounded-xl text-white font-title-md text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition-all ${
-                        isSlotAlreadyBooked 
-                          ? "bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-red-500/20" 
-                          : "btn-gradient-primary"
+                        isSubmitting 
+                          ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
+                          : isSlotAlreadyBooked 
+                            ? "bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-red-500/20" 
+                            : "btn-gradient-primary"
                       }`}
                     >
-                      {isSlotAlreadyBooked ? "Preempt Booking (Admin Priority)" : "Confirm Booking"}
-                      <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                      {isSubmitting ? "Submitting..." : isSlotAlreadyBooked ? "Preempt Booking (Admin Priority)" : "Confirm Booking"}
+                      {!isSubmitting && <span className="material-symbols-outlined text-[20px]">arrow_forward</span>}
                     </button>
                   </div>
                 </aside>
@@ -1396,6 +1734,82 @@ export default function AdminPortal() {
                 className="px-4 py-2 btn-gradient-primary text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
               >
                 Add Room
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Meeting Extension Modal */}
+      {isExtendModalOpen && targetExtendBooking && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-container-high border border-outline-variant/30 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-5 relative">
+            <div className="flex justify-between items-start border-b border-outline-variant/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-amber-400 text-2xl">update</span>
+                <div>
+                  <h3 className="font-headline-md text-base font-bold text-on-surface">Extend Room Reservation</h3>
+                  <p className="text-xs text-on-surface-variant">{targetExtendBooking.roomName} • {targetExtendBooking.title}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsExtendModalOpen(false)} className="text-outline hover:text-on-surface text-lg font-bold">✕</button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-semibold text-outline uppercase tracking-wider">Quick Presets</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[15, 30, 60, 120].map(mins => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setCustomExtensionMinutes(mins.toString())}
+                    className={`py-2 rounded-xl border text-xs font-bold transition-all ${
+                      customExtensionMinutes === mins.toString()
+                        ? 'bg-amber-500 text-white border-amber-400 shadow-lg scale-105'
+                        : 'bg-surface-container-highest/50 border-outline-variant/30 text-on-surface hover:border-amber-500/50'
+                    }`}
+                  >
+                    +{mins >= 60 ? `${mins/60}h` : `${mins}m`}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative mt-2">
+                <label className="absolute -top-2 left-3 bg-surface-container-high px-1 text-[10px] text-amber-400 font-semibold z-10">Custom Extension Duration</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="9000"
+                    placeholder="e.g. 45 or 150"
+                    value={customExtensionMinutes}
+                    onChange={(e) => setCustomExtensionMinutes(e.target.value)}
+                    className="w-full bg-surface-container-highest/30 border border-amber-500/40 rounded-xl py-2.5 px-3 text-sm text-on-surface focus:outline-none focus:border-amber-400 font-semibold shadow-inner"
+                  />
+                  <span className="text-xs font-semibold text-outline shrink-0">Minutes</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-amber-300 leading-relaxed bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl mt-1">
+                ⚠️ <strong>Overrun Protection:</strong> Extending this meeting will recalculate spatial schedules and send automated email + in-app alerts to any conflicting upcoming teams.
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-2">
+              <button
+                type="button"
+                onClick={() => setIsExtendModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-outline-variant/30 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-highest"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteExtend}
+                disabled={isExtending}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-lg hover:shadow-amber-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isExtending ? 'Updating Schedule...' : 'Confirm Extension'}
               </button>
             </div>
           </div>

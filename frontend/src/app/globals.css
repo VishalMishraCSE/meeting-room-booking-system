@@ -243,13 +243,17 @@ body {
 }
 
 .btn-gradient-primary {
-  background: linear-gradient(135deg, var(--color-primary-val), var(--color-secondary));
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
   transition: all 0.3s ease;
 }
 
 .btn-gradient-primary:hover {
+  background: linear-gradient(135deg, #4338ca, #6d28d9) !important;
   transform: scale(1.02);
-  animation: pulse-glow 2s infinite;
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
 }
 
 /* Card active glow state */

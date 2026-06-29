@@ -20,6 +20,7 @@ model User {
   department   Department? @relation(fields: [departmentId], references: [id])
   bookings     Booking[]
   favorites    Favorite[]
+  notifications Notification[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -145,4 +146,18 @@ model Favorite {
 
   @@unique([userId, roomId])
   @@map("favorites")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("info") // info, success, warning, error
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("notifications")
 }
