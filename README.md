@@ -63,7 +63,16 @@ Ensure you have the following installed:
     ```bash
     npm install
     ```
-3.  Start the Next.js development server:
+    *Note: This automatically runs the `postinstall` script to generate the Prisma client.*
+3.  Configure environment variables:
+    *   Copy the template: `cp .env.example .env` (or duplicate the file manually).
+    *   Open `.env` and configure your `DATABASE_URL` and `DIRECT_URL` (PostgreSQL).
+4.  Initialize schema and seed simulated roles:
+    ```bash
+    npx prisma db push
+    npx prisma db seed
+    ```
+5.  Start the Next.js development server:
     ```bash
     npm run dev
     ```

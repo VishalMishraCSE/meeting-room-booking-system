@@ -1,22 +1,39 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## ⚙️ Prerequisites & Environment Configuration
+
+Before running the application, you need to configure your local environment variables and setup the database:
+
+1. **Copy the environment template**:
+   ```bash
+   cp .env.example .env
+   ```
+2. **Configure your Database URL**:
+   Open the `.env` file and set the `DATABASE_URL` and `DIRECT_URL` environment variables pointing to your PostgreSQL instance.
+
+3. **Initialize the Database Schema**:
+   Push the schema migrations to your local or remote database:
+   ```bash
+   npx prisma db push
+   ```
+
+4. **Seed the Database**:
+   Seed the database with pre-configured mock roles (Employee, Manager, Admin) and initial rooms data:
+   ```bash
+   npx prisma db seed
+   ```
+
+## 🚀 Getting Started
 
 First, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

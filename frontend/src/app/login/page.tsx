@@ -87,7 +87,17 @@ export default function LoginPage() {
         router.push("/admin");
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "Invalid corporate credentials.");
+      let msg = err.message || "Invalid corporate credentials.";
+      if (
+        msg.toLowerCase().includes("database") ||
+        msg.toLowerCase().includes("prisma") ||
+        msg.toLowerCase().includes("server error") ||
+        msg.toLowerCase().includes("failed to fetch") ||
+        msg.toLowerCase().includes("connection")
+      ) {
+        msg += " — (Dev Tip: Make sure you copied .env.example to .env, configured your DATABASE_URL, and ran 'npx prisma db push' and 'npx prisma db seed' in the frontend directory.)";
+      }
+      setErrorMessage(msg);
       setIsSubmitting(false);
     }
   };

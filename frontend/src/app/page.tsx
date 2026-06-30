@@ -514,7 +514,7 @@ export default function BookingDashboard() {
       </nav>
 
       {/* Main Content Wrapper */}
-      <div className="ml-0 md:ml-64 flex flex-col flex-1 h-screen">
+      <div className="ml-0 md:ml-64 flex flex-col flex-1 h-screen w-full max-w-full overflow-x-hidden">
         {/* TopNavBar */}
         <header className="hidden md:flex fixed top-0 right-0 left-64 h-20 bg-surface/60 backdrop-blur-md border-b border-outline-variant/10 shadow-sm z-40 px-stack-lg justify-between items-center transition-all duration-300">
           <div className="flex items-center font-title-md text-title-md text-on-surface font-semibold">
@@ -616,7 +616,7 @@ export default function BookingDashboard() {
           {/* VIEW: ROOMS BOOKING LIST */}
           {currentView === "bookings" && (
             <main className="p-stack-lg max-w-[1440px] mx-auto w-full">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-6">
                 <div>
                   <h1 className="font-headline-lg text-3xl font-bold text-on-surface">Active Reservations</h1>
                   <p className="font-body-md text-on-surface-variant mt-1">Confirmed and ongoing room schedules in the workspace.</p>
