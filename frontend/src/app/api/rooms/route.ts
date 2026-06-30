@@ -94,12 +94,45 @@ export async function POST(request: Request) {
         })
       : [];
 
+    let targetFloorId = parseInt(floorId);
+
+    // Verify if floor exists
+    const floorExists = await prisma.floor.findUnique({
+      where: { id: targetFloorId },
+    });
+
+    if (!floorExists) {
+      // Try to match floor name from the location string (e.g. "floor 3" -> "Floor 3")
+      let matchedFloor = null;
+      if (location) {
+        const locationLower = location.toLowerCase();
+        const floors = await prisma.floor.findMany();
+        matchedFloor = floors.find(f => locationLower.includes(f.name.toLowerCase()));
+      }
+
+      if (matchedFloor) {
+        targetFloorId = matchedFloor.id;
+      } else {
+        // Fallback: Find the first floor in the database
+        const firstFloor = await prisma.floor.findFirst();
+        if (firstFloor) {
+          targetFloorId = firstFloor.id;
+        } else {
+          // If absolutely no floors exist, create a default Floor to satisfy constraint
+          const defaultFloor = await prisma.floor.create({
+            data: { name: 'Floor 1', building: 'Main Block' },
+          });
+          targetFloorId = defaultFloor.id;
+        }
+      }
+    }
+
     const newRoom = await prisma.room.create({
       data: {
         name,
         roomNumber,
         capacity: parseInt(capacity),
-        floorId: parseInt(floorId),
+        floorId: targetFloorId,
         location,
         description,
         status: status || 'Available',
