@@ -126,10 +126,11 @@ export async function sendBookingConfirmationEmail(
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'Asia/Kolkata',
   });
   
-  const startStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const endStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  const endStr = endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 
   // Generate Google Calendar Link
   const gcalStart = formatCalendarDate(startTime);
@@ -218,9 +219,10 @@ export async function sendApprovalRequestEmail(
     weekday: 'long',
     month: 'long',
     day: 'numeric',
+    timeZone: 'Asia/Kolkata',
   });
-  const startStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const endStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  const endStr = endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #ef4444;">
@@ -320,9 +322,10 @@ export async function sendBookingCancellationEmail(
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'Asia/Kolkata',
   });
-  const startStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const endStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  const endStr = endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 
   // Generate calendar cancellation format
   const uid = `booking-${bookingId}`;
@@ -402,9 +405,10 @@ export async function sendBookingRejectionEmail(
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'Asia/Kolkata',
   });
-  const startStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const endStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  const endStr = endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #ef4444;">
@@ -464,9 +468,10 @@ export async function sendBookingUpdateEmail(
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'Asia/Kolkata',
   });
-  const startStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const endStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  const endStr = endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 
   // Generate Google Calendar Link
   const gcalStart = formatCalendarDate(startTime);
@@ -556,9 +561,10 @@ export async function sendNoShowReleaseEmail(
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'Asia/Kolkata',
   });
-  const startStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const endStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  const endStr = endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f59e0b;">
