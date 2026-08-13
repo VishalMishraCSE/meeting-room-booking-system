@@ -35,6 +35,18 @@ interface AuditLog {
   iconColor: string;
 }
 
+interface RoomSupply {
+  id: number;
+  roomId: number;
+  itemName: string;
+  quantity: number;
+  status: string; // Missing, To Buy, Purchased, Replenished
+  notes?: string;
+  reportedBy: string;
+  createdAt: string;
+  room?: { id: number; name: string; roomNumber: string; location: string };
+}
+
 export default function AdminPortal() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -137,6 +149,17 @@ export default function AdminPortal() {
   const [addRoomLocation, setAddRoomLocation] = useState<string>("");
   const [addRoomImage, setAddRoomImage] = useState<string>("");
   const [addRoomAmenities, setAddRoomAmenities] = useState<string[]>([]);
+
+  // Room Supply Tracker State
+  const [supplies, setSupplies] = useState<RoomSupply[]>([]);
+  const [supplyFilter, setSupplyFilter] = useState<string>("All");
+  const [isAddSupplyModalOpen, setIsAddSupplyModalOpen] = useState<boolean>(false);
+  const [newSupplyItemName, setNewSupplyItemName] = useState<string>("");
+  const [newSupplyRoomId, setNewSupplyRoomId] = useState<string>("");
+  const [newSupplyQuantity, setNewSupplyQuantity] = useState<number>(1);
+  const [newSupplyStatus, setNewSupplyStatus] = useState<string>("Missing");
+  const [newSupplyNotes, setNewSupplyNotes] = useState<string>("");
+  const [isSubmittingSupply, setIsSubmittingSupply] = useState<boolean>(false);
 
   const monthsList = useMemo(() => [
     "January", "February", "March", "April", "May", "June",
@@ -260,8 +283,73 @@ export default function AdminPortal() {
       if (logsRes.ok && Array.isArray(logsData)) {
         setAuditLogs(logsData);
       }
+
+      // Fetch room supplies & missing equipment
+      fetch("/api/supplies").then(res => res.json()).then(data => {
+        if (Array.isArray(data)) setSupplies(data);
+      }).catch(e => console.error("Failed to fetch room supplies:", e));
     } catch (err) {
       console.error("Failed to fetch admin data:", err);
+    }
+  };
+
+  const handleCreateSupply = async () => {
+    if (!newSupplyItemName.trim() || !newSupplyRoomId) {
+      alert("Please select a room and enter the item name.");
+      return;
+    }
+    setIsSubmittingSupply(true);
+    try {
+      const res = await fetch("/api/supplies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId: newSupplyRoomId,
+          itemName: newSupplyItemName,
+          quantity: newSupplyQuantity,
+          status: newSupplyStatus,
+          notes: newSupplyNotes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to log supply item");
+      setIsAddSupplyModalOpen(false);
+      setNewSupplyItemName("");
+      setNewSupplyNotes("");
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSubmittingSupply(false);
+    }
+  };
+
+  const handleUpdateSupplyStatus = async (id: number, status: string) => {
+    try {
+      const res = await fetch(`/api/supplies/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update supply status");
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteSupply = async (id: number) => {
+    if (!confirm("Are you sure you want to remove this supply report?")) return;
+    try {
+      const res = await fetch(`/api/supplies/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete supply item");
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
@@ -680,6 +768,20 @@ export default function AdminPortal() {
             >
               <span className="material-symbols-outlined text-[20px]" style={currentView === "audit" ? { fontVariationSettings: "'FILL' 1" } : {}}>history</span>
               Audit Trail
+            </button>
+          </li>
+
+          <li>
+            <button 
+              onClick={() => setCurrentView("supplies")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
+                currentView === "supplies" 
+                  ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "supplies" ? { fontVariationSettings: "'FILL' 1" } : {}}>inventory_2</span>
+              Room Supplies
             </button>
           </li>
 
@@ -1553,6 +1655,148 @@ export default function AdminPortal() {
             </main>
           )}
 
+          {/* VIEW: ROOM SUPPLIES & PROCUREMENT TRACKER */}
+          {currentView === "supplies" && (
+            <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex-1 overflow-y-auto">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="font-headline-lg text-3xl font-bold text-on-surface">Room Supplies & Procurement Control</h1>
+                    <span className="bg-primary/20 text-primary text-xs font-bold px-2.5 py-0.5 rounded-full border border-primary/30">SysOps Admin Authority</span>
+                  </div>
+                  <p className="font-body-md text-on-surface-variant mt-1">Manage workspace equipment, missing hardware (HDMI, adapters, remotes), and procurement requests across all facility floors.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    if (rooms.length > 0) setNewSupplyRoomId(rooms[0].id);
+                    setIsAddSupplyModalOpen(true);
+                  }}
+                  className="px-4 py-2.5 btn-gradient-primary text-white font-bold text-sm rounded-xl flex items-center gap-2 shadow-lg hover:shadow-primary/20 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span> Report Missing / Needed Item
+                </button>
+              </div>
+
+              {/* Status Filter Tabs */}
+              <div className="glass-panel rounded-xl p-3 mb-6 flex flex-wrap items-center gap-2 justify-between">
+                <div className="flex items-center gap-2 overflow-x-auto">
+                  {["All", "Missing", "To Buy", "Purchased", "Replenished"].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setSupplyFilter(st)}
+                      className={`px-3.5 py-1.5 rounded-lg font-label-md text-xs font-bold transition-all ${
+                        supplyFilter === st
+                          ? 'bg-primary/20 text-primary border border-primary/30 shadow-sm'
+                          : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/40'
+                      }`}
+                    >
+                      {st} ({st === 'All' ? supplies.length : supplies.filter(s => s.status.toLowerCase() === st.toLowerCase()).length})
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-outline font-semibold">
+                  Showing {supplies.filter(s => supplyFilter === 'All' || s.status.toLowerCase() === supplyFilter.toLowerCase()).length} item(s)
+                </span>
+              </div>
+
+              {/* Supplies Listing Table */}
+              {supplies.filter(s => supplyFilter === 'All' || s.status.toLowerCase() === supplyFilter.toLowerCase()).length === 0 ? (
+                <div className="glass-panel rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
+                  <span className="material-symbols-outlined text-outline text-5xl">inventory_2</span>
+                  <h3 className="font-headline-md text-lg font-bold text-on-surface">No Supply Reports Found</h3>
+                  <p className="text-xs text-on-surface-variant max-w-sm">All room equipment is fully stocked or no items match the selected filter.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {supplies
+                    .filter(s => supplyFilter === 'All' || s.status.toLowerCase() === supplyFilter.toLowerCase())
+                    .map((item) => {
+                      const roomObj = rooms.find(r => r.id === item.roomId.toString()) || item.room;
+                      const statusColor = 
+                        item.status === 'Missing' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                        item.status === 'To Buy' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                        item.status === 'Purchased' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+
+                      return (
+                        <div key={item.id} className="glass-panel rounded-2xl p-5 border border-outline-variant/20 flex flex-col justify-between shadow-lg relative overflow-hidden group">
+                          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-tertiary"></div>
+                          <div>
+                            <div className="flex justify-between items-start gap-2 mb-3 pt-1">
+                              <div>
+                                <span className="font-mono text-[10px] text-outline uppercase tracking-wider block">ITEM REPORT #{item.id}</span>
+                                <h3 className="font-title-md text-base font-bold text-on-surface mt-0.5">{item.itemName}</h3>
+                              </div>
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${statusColor}`}>
+                                {item.status}
+                              </span>
+                            </div>
+
+                            <div className="bg-surface-container-low/50 border border-outline-variant/15 rounded-xl p-3 space-y-1.5 mb-3 text-xs">
+                              <p className="text-on-surface font-semibold flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-primary text-[16px]">meeting_room</span>
+                                {roomObj?.name || `Room #${item.roomId}`} ({roomObj?.location || 'Facility Room'})
+                              </p>
+                              <p className="text-on-surface-variant flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-outline text-[16px]">format_list_numbered</span>
+                                Quantity: <strong className="text-on-surface">{item.quantity}</strong>
+                              </p>
+                              <p className="text-on-surface-variant flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-outline text-[16px]">person</span>
+                                Reported by: <span className="text-on-surface font-medium">{item.reportedBy}</span>
+                              </p>
+                              {item.notes && (
+                                <p className="text-on-surface-variant italic mt-1 pt-1 border-t border-outline-variant/10">
+                                  &ldquo;{item.notes}&rdquo;
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quick Action Status Cycle Buttons */}
+                          <div className="pt-3 border-t border-outline-variant/15 flex items-center justify-between gap-2">
+                            <div className="flex flex-wrap gap-1">
+                              {item.status !== 'To Buy' && (
+                                <button
+                                  onClick={() => handleUpdateSupplyStatus(item.id, 'To Buy')}
+                                  className="text-[11px] font-bold px-2 py-1 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
+                                >
+                                  Mark To Buy
+                                </button>
+                              )}
+                              {item.status !== 'Purchased' && (
+                                <button
+                                  onClick={() => handleUpdateSupplyStatus(item.id, 'Purchased')}
+                                  className="text-[11px] font-bold px-2 py-1 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-all"
+                                >
+                                  Mark Purchased
+                                </button>
+                              )}
+                              {item.status !== 'Replenished' && (
+                                <button
+                                  onClick={() => handleUpdateSupplyStatus(item.id, 'Replenished')}
+                                  className="text-[11px] font-bold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all"
+                                >
+                                  Mark Restocked
+                                </button>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDeleteSupply(item.id)}
+                              className="p-1 text-outline hover:text-error hover:bg-error/10 rounded transition-colors"
+                              title="Delete report"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </main>
+          )}
+
         </div>
       </div>
 
@@ -1812,6 +2056,118 @@ export default function AdminPortal() {
                 {isExtending ? 'Updating Schedule...' : 'Confirm Extension'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Supply / Missing Equipment Modal */}
+      {isAddSupplyModalOpen && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="glass-panel border border-outline-variant/30 rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center pb-3 border-b border-outline-variant/20 mb-4">
+              <h3 className="font-title-md text-base font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-xl">inventory_2</span>
+                Report Missing Room Equipment
+              </h3>
+              <button
+                onClick={() => setIsAddSupplyModalOpen(false)}
+                className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-highest"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreateSupply();
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">Target Room</label>
+                <select
+                  value={newSupplyRoomId}
+                  onChange={(e) => setNewSupplyRoomId(e.target.value)}
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl py-2.5 px-3 text-on-surface font-medium outline-none focus:border-primary"
+                  required
+                >
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id} className="bg-surface-container-high text-on-surface">
+                      {r.name} ({r.location})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">Item / Equipment Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. HDMI Cable, Whiteboard Markers, Presenter Remote"
+                  value={newSupplyItemName}
+                  onChange={(e) => setNewSupplyItemName(e.target.value)}
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl py-2.5 px-3 text-on-surface placeholder:text-outline outline-none focus:border-primary font-medium"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-on-surface-variant font-semibold mb-1">Quantity Needed</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={newSupplyQuantity}
+                    onChange={(e) => setNewSupplyQuantity(parseInt(e.target.value, 10) || 1)}
+                    className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl py-2.5 px-3 text-on-surface outline-none focus:border-primary font-medium"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-on-surface-variant font-semibold mb-1">Current Status</label>
+                  <select
+                    value={newSupplyStatus}
+                    onChange={(e) => setNewSupplyStatus(e.target.value)}
+                    className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl py-2.5 px-3 text-on-surface font-medium outline-none focus:border-primary"
+                  >
+                    <option value="Missing" className="bg-surface-container-high">Missing</option>
+                    <option value="To Buy" className="bg-surface-container-high">To Buy</option>
+                    <option value="Purchased" className="bg-surface-container-high">Purchased</option>
+                    <option value="Replenished" className="bg-surface-container-high">Replenished</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">Notes / Specifications (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Needs 3-meter USB-C to HDMI 2.0 cable for teleconference"
+                  value={newSupplyNotes}
+                  onChange={(e) => setNewSupplyNotes(e.target.value)}
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-on-surface placeholder:text-outline outline-none focus:border-primary font-medium"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2 border-t border-outline-variant/15">
+                <button
+                  type="button"
+                  onClick={() => setIsAddSupplyModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingSupply}
+                  className="px-5 py-2 btn-gradient-primary text-white font-bold rounded-xl shadow-lg hover:shadow-primary/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSubmittingSupply ? 'Saving Report...' : 'Log Supply Report'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

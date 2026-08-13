@@ -8,6 +8,7 @@ async function main() {
 
   // 1. Clean existing records to prevent unique constraint failures
   console.log('🧹 Cleaning existing records...');
+  await prisma.roomSupply.deleteMany();
   await prisma.favorite.deleteMany();
   await prisma.bookingHistory.deleteMany();
   await prisma.attendee.deleteMany();
@@ -229,6 +230,41 @@ async function main() {
           { name: 'TV', icon: 'tv' },
         ],
       },
+    },
+  });
+
+  // 6. Seed Room Supplies & Missing Equipment Reports
+  console.log('📦 Seeding room supplies & missing item reports...');
+  await prisma.roomSupply.create({
+    data: {
+      roomId: alphaBoardroom.id,
+      itemName: 'High-Speed HDMI 2.1 Cable (4K)',
+      quantity: 2,
+      status: 'Missing',
+      notes: 'Required for executive teleconference presentations on Floor 4.',
+      reportedBy: 'Malavika Yadav (Manager)',
+    },
+  });
+
+  await prisma.roomSupply.create({
+    data: {
+      roomId: prometheusHall.id,
+      itemName: 'Dry Erase Whiteboard Markers (Pack of 4)',
+      quantity: 3,
+      status: 'To Buy',
+      notes: 'Black and blue markers ran out during workshop.',
+      reportedBy: 'Vishal Mishra (Admin)',
+    },
+  });
+
+  await prisma.roomSupply.create({
+    data: {
+      roomId: betaLab.id,
+      itemName: 'Wireless Presenter Remote & AA Batteries',
+      quantity: 1,
+      status: 'Purchased',
+      notes: 'Replacement remote ordered, awaiting installation.',
+      reportedBy: 'Rithika (Manager)',
     },
   });
 

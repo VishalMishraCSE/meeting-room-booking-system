@@ -62,6 +62,7 @@ model Room {
   amenities    RoomAmenity[]
   photos       RoomPhoto[]
   favorites    Favorite[]
+  supplies     RoomSupply[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -161,3 +162,20 @@ model Notification {
   @@index([userId])
   @@map("notifications")
 }
+
+model RoomSupply {
+  id          Int      @id @default(autoincrement())
+  roomId      Int
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  itemName    String   // e.g. "HDMI Cable", "Whiteboard Markers"
+  quantity    Int      @default(1)
+  status      String   @default("Missing") // Missing, To Buy, Purchased, Replenished
+  notes       String?
+  reportedBy  String   // Manager/Admin user name or email
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([roomId])
+  @@map("room_supplies")
+}
+
