@@ -102,6 +102,8 @@ export default function BookingDashboard() {
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   const [showNotificationsPopover, setShowNotificationsPopover] = useState<boolean>(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
+  const [isRoomHistoryModalOpen, setIsRoomHistoryModalOpen] = useState<boolean>(false);
+  const [targetRoomHistory, setTargetRoomHistory] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
@@ -817,18 +819,32 @@ _Please confirm your attendance!_`;
                               <p className="font-body-md text-xs text-outline mb-3 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[16px]">location_on</span> {room.location}
                               </p>
-                              <div className="mt-auto pt-3 border-t border-outline-variant/20 flex gap-2">
-                                {room.amenities.map((amenity) => {
-                                  let icon = 'videocam';
-                                  if (amenity === 'whiteboard') icon = 'desktop_windows';
-                                  if (amenity === 'projector') icon = 'cast';
-                                  if (amenity === 'tv') icon = 'tv';
-                                  return (
-                                    <div key={amenity} className="p-1.5 rounded bg-surface-container-high text-on-surface-variant group-hover:text-primary transition-colors">
-                                      <span className="material-symbols-outlined text-[18px]">{icon}</span>
-                                    </div>
-                                  );
-                                })}
+                              <div className="mt-auto pt-3 border-t border-outline-variant/20 flex justify-between items-center gap-2">
+                                <div className="flex gap-1.5">
+                                  {room.amenities.map((amenity) => {
+                                    let icon = 'videocam';
+                                    if (amenity === 'whiteboard') icon = 'desktop_windows';
+                                    if (amenity === 'projector') icon = 'cast';
+                                    if (amenity === 'tv') icon = 'tv';
+                                    return (
+                                      <div key={amenity} className="p-1.5 rounded bg-surface-container-high text-on-surface-variant group-hover:text-primary transition-colors">
+                                        <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTargetRoomHistory(room);
+                                    setIsRoomHistoryModalOpen(true);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[11px] font-bold transition-all flex items-center gap-1 shrink-0"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">history</span>
+                                  Room History
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -1124,7 +1140,55 @@ _Please confirm your attendance!_`;
               <div className="flex justify-between"><span className="text-outline">Date & Time:</span><span className="text-on-surface">{getDateName(selectedDate)} • {selectedTime}</span></div>
               <div className="flex justify-between"><span className="text-outline">Title:</span><span className="text-on-surface">{meetingTitle || "Project Sync"}</span></div>
             </div>
-            <button onClick={() => setIsSuccessModalOpen(false)} className="w-full py-3 rounded-xl btn-gradient-primary text-white font-title-md text-sm font-bold shadow-lg">Done</button>
+      {/* Room History Audit Log Modal */}
+      {isRoomHistoryModalOpen && targetRoomHistory && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="glass-panel border border-outline-variant/30 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center pb-3 border-b border-outline-variant/20 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-2xl">history</span>
+                <div>
+                  <h3 className="font-title-md text-base font-bold text-on-surface">{targetRoomHistory.name} - Utilization History</h3>
+                  <p className="text-[11px] text-on-surface-variant">{targetRoomHistory.location} • Capacity: {targetRoomHistory.seats} Pax</p>
+                </div>
+              </div>
+              <button onClick={() => setIsRoomHistoryModalOpen(false)} className="text-outline hover:text-on-surface text-lg font-bold">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs max-h-96 overflow-y-auto pr-1">
+              <div className="text-[11px] font-bold text-outline uppercase tracking-wider mb-2">Chronological Audit Trail & Activity Log</div>
+              {bookings.filter(b => b.roomId === targetRoomHistory.id).length === 0 ? (
+                <div className="p-6 text-center text-on-surface-variant bg-surface-container-low/50 rounded-xl border border-outline-variant/20 italic">
+                  No historical bookings or operations logged for this room yet.
+                </div>
+              ) : (
+                bookings.filter(b => b.roomId === targetRoomHistory.id).map(b => (
+                  <div key={b.id} className="p-3 bg-surface-container-low/60 border border-outline-variant/20 rounded-xl flex flex-col gap-1.5 hover:border-primary/30 transition-all">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-on-surface text-xs">{b.title}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-tertiary/20 text-tertiary font-bold">{b.status}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-on-surface-variant">
+                      <span>👤 {b.booker}</span>
+                      <span>📅 {b.date} • {b.time}</span>
+                    </div>
+                    <div className="text-[10px] text-outline font-mono pt-1 border-t border-outline-variant/10 flex justify-between">
+                      <span>Event Logged: SysOps DB Engine</span>
+                      <span>Status: Protected</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-outline-variant/15 mt-4">
+              <button
+                onClick={() => setIsRoomHistoryModalOpen(false)}
+                className="px-5 py-2 btn-gradient-primary text-white font-bold rounded-xl shadow-lg text-xs"
+              >
+                Close Audit View
+              </button>
+            </div>
           </div>
         </div>
       )}

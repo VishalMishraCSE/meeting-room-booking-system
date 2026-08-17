@@ -129,6 +129,8 @@ export default function ManagerPortal() {
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   const [showNotificationsPopover, setShowNotificationsPopover] = useState<boolean>(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
+  const [isRoomHistoryModalOpen, setIsRoomHistoryModalOpen] = useState<boolean>(false);
+  const [targetRoomHistory, setTargetRoomHistory] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
@@ -977,6 +979,17 @@ _Please confirm your attendance!_`;
                               </span>
                             </td>
                             <td className="p-4 text-right flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  const r = rooms.find(room => room.id === booking.roomId || room.name === booking.roomName);
+                                  setTargetRoomHistory(r || { id: booking.roomId, name: booking.roomName, location: "Corporate Floor", seats: 10 });
+                                  setIsRoomHistoryModalOpen(true);
+                                }}
+                                className="text-xs font-bold text-primary bg-primary/15 hover:bg-primary/25 px-2.5 py-1.5 rounded-lg border border-primary/30 transition-all flex items-center gap-1 shadow-sm"
+                                title="View room utilization history and audit log"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">history</span> Room History
+                              </button>
                               <a
                                 href={getWhatsAppShareLink(booking)}
                                 target="_blank"
@@ -1921,6 +1934,57 @@ _Please confirm your attendance!_`;
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      {/* Room History Audit Log Modal */}
+      {isRoomHistoryModalOpen && targetRoomHistory && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="glass-panel border border-outline-variant/30 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center pb-3 border-b border-outline-variant/20 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-2xl">history</span>
+                <div>
+                  <h3 className="font-title-md text-base font-bold text-on-surface">{targetRoomHistory.name} - Room Audit History</h3>
+                  <p className="text-[11px] text-on-surface-variant">{targetRoomHistory.location} • Capacity: {targetRoomHistory.seats || 10} Pax</p>
+                </div>
+              </div>
+              <button onClick={() => setIsRoomHistoryModalOpen(false)} className="text-outline hover:text-on-surface text-lg font-bold">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs max-h-96 overflow-y-auto pr-1">
+              <div className="text-[11px] font-bold text-outline uppercase tracking-wider mb-2">Chronological Utilization & Event Logs</div>
+              {bookings.filter(b => b.roomId === targetRoomHistory.id || b.roomName === targetRoomHistory.name).length === 0 ? (
+                <div className="p-6 text-center text-on-surface-variant bg-surface-container-low/50 rounded-xl border border-outline-variant/20 italic">
+                  No historical bookings or operations logged for this room yet.
+                </div>
+              ) : (
+                bookings.filter(b => b.roomId === targetRoomHistory.id || b.roomName === targetRoomHistory.name).map(b => (
+                  <div key={b.id} className="p-3 bg-surface-container-low/60 border border-outline-variant/20 rounded-xl flex flex-col gap-1.5 hover:border-primary/30 transition-all">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-on-surface text-xs">{b.title}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-tertiary/20 text-tertiary font-bold">{b.status}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-on-surface-variant">
+                      <span>👤 Reserved By: {b.booker}</span>
+                      <span>📅 {b.date} • {b.time}</span>
+                    </div>
+                    <div className="text-[10px] text-outline font-mono pt-1 border-t border-outline-variant/10 flex justify-between">
+                      <span>Event Logged: SysOps DB Engine</span>
+                      <span>Status: Protected</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-outline-variant/15 mt-4">
+              <button
+                onClick={() => setIsRoomHistoryModalOpen(false)}
+                className="px-5 py-2 btn-gradient-primary text-white font-bold rounded-xl shadow-lg text-xs"
+              >
+                Close Audit View
+              </button>
+            </div>
           </div>
         </div>
       )}
