@@ -1936,6 +1936,8 @@ _Please confirm your attendance!_`;
             </form>
           </div>
         </div>
+      )}
+
       {/* Room History Audit Log Modal */}
       {isRoomHistoryModalOpen && targetRoomHistory && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">

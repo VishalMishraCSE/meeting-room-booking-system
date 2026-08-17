@@ -1140,6 +1140,11 @@ _Please confirm your attendance!_`;
               <div className="flex justify-between"><span className="text-outline">Date & Time:</span><span className="text-on-surface">{getDateName(selectedDate)} • {selectedTime}</span></div>
               <div className="flex justify-between"><span className="text-outline">Title:</span><span className="text-on-surface">{meetingTitle || "Project Sync"}</span></div>
             </div>
+            <button onClick={() => setIsSuccessModalOpen(false)} className="w-full py-3 rounded-xl btn-gradient-primary text-white font-title-md text-sm font-bold shadow-lg">Done</button>
+          </div>
+        </div>
+      )}
+
       {/* Room History Audit Log Modal */}
       {isRoomHistoryModalOpen && targetRoomHistory && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
