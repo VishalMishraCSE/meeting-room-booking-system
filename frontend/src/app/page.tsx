@@ -181,7 +181,7 @@ export default function BookingDashboard() {
           status: dbR.status.toLowerCase() === "available" ? ("online" as const) : ("maintenance" as const)
         }));
         setRooms(mappedRooms);
-        if (mappedRooms.length > 0 && !selectedRoomId) {
+        if (mappedRooms.length > 0) {
           setSelectedRoomId(mappedRooms[0].id);
         }
       }
