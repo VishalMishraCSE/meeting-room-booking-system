@@ -366,6 +366,30 @@ export default function ManagerPortal() {
     }
   };
 
+  const getWhatsAppShareLink = (booking: any) => {
+    const attendeesStr = booking.attendees && booking.attendees.length > 0 
+      ? booking.attendees.join(', ') 
+      : 'All Team Members';
+      
+    const text = 
+`🏢 *LUMINA RESERVE: OFFICIAL MEETING INVITATION*
+
+📌 *Meeting Title:* ${booking.title}
+🚪 *Facility Room:* ${booking.roomName}
+⏰ *Scheduled Time:* ${booking.time}
+👤 *Organized By:* ${booking.booker || 'Corporate Team'}
+👥 *Invited Participants:* ${attendeesStr}
+✅ *Status:* Approved (15m Auto-Approval Window)
+
+📅 *Add to Google Calendar:* https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.title)}&location=${encodeURIComponent(booking.roomName)}
+
+🔗 *Access Portal:* http://192.168.149.172:3000/login
+
+_Please confirm your attendance!_`;
+
+    return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  };
+
   // Initialize and Toggle Theme & Session Guard
   useEffect(() => {
     const storedRole = localStorage.getItem("userRole");
@@ -953,6 +977,15 @@ export default function ManagerPortal() {
                               </span>
                             </td>
                             <td className="p-4 text-right flex items-center justify-end gap-2">
+                              <a
+                                href={getWhatsAppShareLink(booking)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 px-2.5 py-1.5 rounded-lg border border-emerald-500/30 transition-all flex items-center gap-1 shadow-sm"
+                                title="Share meeting reminder on WhatsApp"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">chat</span> WhatsApp
+                              </a>
                               <button 
                                 onClick={() => handleOpenExtendModal(booking)}
                                 className="text-xs font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-lg border border-amber-500/30 transition-all flex items-center gap-1 shadow-sm"

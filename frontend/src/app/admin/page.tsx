@@ -172,9 +172,28 @@ export default function AdminPortal() {
   const [isRoomHistoryModalOpen, setIsRoomHistoryModalOpen] = useState<boolean>(false);
   const [targetRoomHistory, setTargetRoomHistory] = useState<Room | null>(null);
 
-  // Helper for WhatsApp Share link
+  // Helper for Rich Automated WhatsApp Share link
   const getWhatsAppShareLink = (booking: any) => {
-    const text = `🗓️ *Meeting Reservation - Lumina Reserve*\n\n📌 *Title:* ${booking.title}\n📍 *Room:* ${booking.roomName}\n📅 *Date:* Day ${booking.date}\n⏰ *Time:* ${booking.time}\n👥 *Attendees:* ${booking.attendees && booking.attendees.length > 0 ? booking.attendees.join(', ') : 'All Team Members'}\n\nPlease confirm your attendance!`;
+    const attendeesStr = booking.attendees && booking.attendees.length > 0 
+      ? booking.attendees.join(', ') 
+      : 'All Team Members';
+      
+    const text = 
+`🏢 *LUMINA RESERVE: OFFICIAL MEETING INVITATION*
+
+📌 *Meeting Title:* ${booking.title}
+🚪 *Facility Room:* ${booking.roomName}
+⏰ *Scheduled Time:* ${booking.time}
+👤 *Organized By:* ${booking.booker || 'Corporate Team'}
+👥 *Invited Participants:* ${attendeesStr}
+✅ *Status:* Approved (15m Auto-Approval Window)
+
+📅 *Add to Google Calendar:* https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.title)}&location=${encodeURIComponent(booking.roomName)}
+
+🔗 *Access Portal:* http://192.168.149.172:3000/login
+
+_Please confirm your attendance!_`;
+
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   };
 
