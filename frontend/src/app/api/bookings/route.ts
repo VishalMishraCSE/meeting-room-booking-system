@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { sendBookingConfirmationEmail, sendApprovalRequestEmail, sendBookingCancellationEmail } from '@/lib/mail';
+import { broadcastWhatsAppBookingNotification } from '@/lib/whatsapp';
 
 // Helper to get session user
 async function getSessionUser() {
@@ -254,6 +255,23 @@ export async function POST(request: Request) {
     // ── Send emails and create in-app notifications asynchronously after successful creation ──
     const locationLabel = room.location || `Room ${room.roomNumber}, ${room.floor.name}`;
     const timeFormatted = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+    // Broadcast automated WhatsApp message via Green API to designated chat numbers (You, Vishal, Malavika)
+    const waText = 
+`🏢 *LUMINA RESERVE: OFFICIAL MEETING INVITATION*
+
+📌 *Meeting Title:* ${title}
+🚪 *Facility Room:* ${room.name} (${room.location || 'Main Wing'})
+⏰ *Scheduled Time:* ${start.toLocaleDateString()} · ${timeFormatted}
+👤 *Organized By:* ${user.name}
+👥 *Attendees:* ${validAttendees.length > 0 ? validAttendees.join(', ') : 'All Team Members'}
+✅ *Status:* ${initialStatus === 'Confirmed' ? 'Approved' : 'Auto-Approved (15m Window)'}
+
+📅 *Add to Google Calendar:* https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&location=${encodeURIComponent(room.name)}
+
+🔗 *Access Portal:* http://192.168.149.172:3000/login`;
+
+    broadcastWhatsAppBookingNotification(waText).catch(e => console.error('Failed Green API WhatsApp broadcast:', e));
 
     if (initialStatus === 'Confirmed') {
       // Send confirmation to booker
