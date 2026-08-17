@@ -4,34 +4,38 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const { name, email, password, role } = await request.json();
 
-    if (!email || !password) {
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Name, email, and password are required' },
         { status: 400 }
       );
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const user = await prisma.user.findFirst({
-      where: { email: normalizedEmail },
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
     });
 
-    if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+    if (existingUser) {
       return NextResponse.json(
-        { error: 'Invalid corporate credentials' },
-        { status: 401 }
+        { error: 'An account with this corporate email already exists. Please sign in.' },
+        { status: 400 }
       );
     }
 
-    if (!user.isActive) {
-      return NextResponse.json(
-        { error: 'This corporate account has been deactivated' },
-        { status: 403 }
-      );
-    }
+    const passwordHash = bcrypt.hashSync(password, 10);
+    const normalizedRole = role && ['Admin', 'Manager', 'Employee'].includes(role) ? role : 'Employee';
+
+    const user = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        passwordHash,
+        role: normalizedRole,
+        isActive: true,
+      },
+    });
 
     const response = NextResponse.json({
       success: true,
@@ -43,7 +47,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Set user session cookie securely
     response.cookies.set('userSession', JSON.stringify({
       id: user.id,
       name: user.name,
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // Allow cross-device and LAN navigation
+      sameSite: 'strict',
       maxAge: 60 * 60 * 24, // 1 day
       path: '/',
     });
@@ -61,7 +64,7 @@ export async function POST(request: Request) {
     return response;
   } catch (error: any) {
     return NextResponse.json(
-      { error: 'Internal server error: ' + error.message },
+      { error: 'Registration failed: ' + error.message },
       { status: 500 }
     );
   }

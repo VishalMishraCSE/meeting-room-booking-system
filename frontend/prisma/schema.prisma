@@ -1,8 +1,8 @@
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
+
 
 
 generator client {
@@ -54,9 +54,9 @@ model Room {
   floorId      Int
   floor        Floor         @relation(fields: [floorId], references: [id])
   location     String?       // Additional directions
-  description  String?
+  description  String?       @db.Text
   status       String        @default("Available") // Available, Maintenance
-  heroImageUrl String?
+  heroImageUrl String?       @db.Text
   avgRating    Float         @default(0.0)
   bookings     Booking[]
   amenities    RoomAmenity[]

@@ -3,7 +3,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,6 +18,7 @@ model User {
   department   Department? @relation(fields: [departmentId], references: [id])
   bookings     Booking[]
   favorites    Favorite[]
+  notifications Notification[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -52,14 +52,15 @@ model Room {
   floorId      Int
   floor        Floor         @relation(fields: [floorId], references: [id])
   location     String?       // Additional directions
-  description  String?
+  description  String?       @db.Text
   status       String        @default("Available") // Available, Maintenance
-  heroImageUrl String?
+  heroImageUrl String?       @db.Text
   avgRating    Float         @default(0.0)
   bookings     Booking[]
   amenities    RoomAmenity[]
   photos       RoomPhoto[]
   favorites    Favorite[]
+  supplies     RoomSupply[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -104,6 +105,10 @@ model Booking {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
+  @@index([roomId])
+  @@index([userId])
+  @@index([status])
+  @@index([startTime, endTime])
   @@map("bookings")
 }
 
@@ -114,6 +119,8 @@ model Attendee {
   email     String
   status    String  @default("Pending") // Pending, Accepted, Declined
 
+  @@index([bookingId])
+  @@index([email])
   @@map("attendees")
 }
 
@@ -125,6 +132,7 @@ model BookingHistory {
   performedBy String   // user email
   timestamp   DateTime @default(now())
 
+  @@index([bookingId])
   @@map("booking_histories")
 }
 
@@ -137,4 +145,34 @@ model Favorite {
 
   @@unique([userId, roomId])
   @@map("favorites")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("info") // info, success, warning, error
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model RoomSupply {
+  id          Int      @id @default(autoincrement())
+  roomId      Int
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  itemName    String   // e.g. "HDMI Cable", "Whiteboard Markers"
+  quantity    Int      @default(1)
+  status      String   @default("Missing") // Missing, To Buy, Purchased, Replenished
+  notes       String?
+  reportedBy  String   // Manager/Admin user name or email
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([roomId])
+  @@map("room_supplies")
 }

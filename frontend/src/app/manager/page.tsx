@@ -118,7 +118,7 @@ export default function ManagerPortal() {
   const [selectedDate, setSelectedDate] = useState<string>(now.getDate().toString());
   const [selectedTime, setSelectedTime] = useState<string>("10:00 AM");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [capacityFilter, setCapacityFilter] = useState<string>("6-12");
+  const [capacityFilter, setCapacityFilter] = useState<string>("All");
   const [amenitiesFilter, setAmenitiesFilter] = useState<string[]>([]);
   const [attendees, setAttendees] = useState<string[]>([]);
   const [meetingTitle, setMeetingTitle] = useState<string>("Project Sync");
@@ -371,12 +371,12 @@ export default function ManagerPortal() {
     const storedRole = localStorage.getItem("userRole");
     const storedName = localStorage.getItem("userName");
     if (!storedRole || storedRole !== "manager") {
-      router.push("/login");
-    } else {
-      setLoading(false);
-      if (storedName) setUserName(storedName);
-      fetchData();
+      router.replace("/login");
+      return;
     }
+    setLoading(false);
+    if (storedName) setUserName(storedName);
+    fetchData();
 
     const storedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
     if (storedTheme === "light") {
@@ -1289,6 +1289,12 @@ export default function ManagerPortal() {
                 <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1">
                   <div className="flex items-center gap-2 border-r border-outline-variant/30 pr-3">
                     <span className="font-label-sm text-xs text-outline uppercase tracking-wider">Capacity</span>
+                    <button 
+                      onClick={() => setCapacityFilter("All")}
+                      className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "All" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}
+                    >
+                      All
+                    </button>
                     <button 
                       onClick={() => setCapacityFilter("2-5")}
                       className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "2-5" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}

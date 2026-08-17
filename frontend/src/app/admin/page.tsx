@@ -23,6 +23,7 @@ interface Booking {
   booker: string;
   attendees: string[];
   status: string;
+  checkedIn?: boolean;
 }
 
 interface AuditLog {
@@ -113,7 +114,7 @@ export default function AdminPortal() {
   const [selectedDate, setSelectedDate] = useState<string>(now.getDate().toString());
   const [selectedTime, setSelectedTime] = useState<string>("10:00 AM");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [capacityFilter, setCapacityFilter] = useState<string>("6-12");
+  const [capacityFilter, setCapacityFilter] = useState<string>("All");
   const [amenitiesFilter, setAmenitiesFilter] = useState<string[]>([]);
   const [attendees, setAttendees] = useState<string[]>([]);
   const [meetingTitle, setMeetingTitle] = useState<string>("Project Sync");
@@ -160,6 +161,34 @@ export default function AdminPortal() {
   const [newSupplyStatus, setNewSupplyStatus] = useState<string>("Missing");
   const [newSupplyNotes, setNewSupplyNotes] = useState<string>("");
   const [isSubmittingSupply, setIsSubmittingSupply] = useState<boolean>(false);
+
+  // Edit Members State
+  const [isEditMembersModalOpen, setIsEditMembersModalOpen] = useState<boolean>(false);
+  const [targetEditBooking, setTargetEditBooking] = useState<any>(null);
+  const [editMembersList, setEditMembersList] = useState<string[]>([]);
+  const [newMemberEmailInput, setNewMemberEmailInput] = useState<string>("");
+
+  // Room Specific History State
+  const [isRoomHistoryModalOpen, setIsRoomHistoryModalOpen] = useState<boolean>(false);
+  const [targetRoomHistory, setTargetRoomHistory] = useState<Room | null>(null);
+
+  // Helper for WhatsApp Share link
+  const getWhatsAppShareLink = (booking: any) => {
+    const text = `🗓️ *Meeting Reservation - Lumina Reserve*\n\n📌 *Title:* ${booking.title}\n📍 *Room:* ${booking.roomName}\n📅 *Date:* Day ${booking.date}\n⏰ *Time:* ${booking.time}\n👥 *Attendees:* ${booking.attendees && booking.attendees.length > 0 ? booking.attendees.join(', ') : 'All Team Members'}\n\nPlease confirm your attendance!`;
+    return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  };
+
+  const handleOpenEditMembers = (booking: any) => {
+    setTargetEditBooking(booking);
+    setEditMembersList(booking.attendees || []);
+    setNewMemberEmailInput("");
+    setIsEditMembersModalOpen(true);
+  };
+
+  const handleOpenRoomHistory = (room: Room) => {
+    setTargetRoomHistory(room);
+    setIsRoomHistoryModalOpen(true);
+  };
 
   const monthsList = useMemo(() => [
     "January", "February", "March", "April", "May", "June",
@@ -427,12 +456,12 @@ export default function AdminPortal() {
     const storedRole = localStorage.getItem("userRole");
     const storedName = localStorage.getItem("userName");
     if (!storedRole || storedRole !== "admin") {
-      router.push("/login");
-    } else {
-      setLoading(false);
-      if (storedName) setUserName(storedName);
-      fetchData();
+      router.replace("/login");
+      return;
     }
+    setLoading(false);
+    if (storedName) setUserName(storedName);
+    fetchData();
 
     const storedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
     if (storedTheme === "light") {
@@ -952,14 +981,14 @@ export default function AdminPortal() {
               ) : (
                 <div className="glass-panel rounded-xl overflow-hidden shadow-lg border border-outline-variant/20">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[750px]">
+                    <table className="w-full text-left border-collapse min-w-[850px]">
                       <thead>
                         <tr className="bg-white/[0.02] border-b border-white/5 font-label-sm text-xs text-on-surface-variant uppercase tracking-wider">
                           <th className="p-4 font-semibold">Booking ID</th>
                           <th className="p-4 font-semibold">Room Name</th>
                           <th className="p-4 font-semibold">Schedule</th>
-                          <th className="p-4 font-semibold">Title</th>
-                          <th className="p-4 font-semibold">Status</th>
+                          <th className="p-4 font-semibold">Title & Participants</th>
+                          <th className="p-4 font-semibold">15m Approval & Check-In</th>
                           <th className="p-4 font-semibold">Reserved By</th>
                           <th className="p-4 font-semibold text-right">Actions</th>
                         </tr>
@@ -968,16 +997,48 @@ export default function AdminPortal() {
                         {bookings.map((booking) => (
                           <tr key={booking.id} className="hover:bg-white/[0.01] transition-colors">
                             <td className="p-4 font-mono text-xs text-outline">{booking.id}</td>
-                            <td className="p-4 font-bold text-on-surface">{booking.roomName}</td>
+                            <td className="p-4">
+                              <span className="font-bold text-on-surface block">{booking.roomName}</span>
+                              <button 
+                                onClick={() => {
+                                  const r = rooms.find(room => room.name === booking.roomName || room.id === booking.roomId);
+                                  if (r) handleOpenRoomHistory(r);
+                                }}
+                                className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5 mt-0.5"
+                              >
+                                <span className="material-symbols-outlined text-[12px]">history</span> Room History
+                              </button>
+                            </td>
                             <td className="p-4 text-xs font-semibold text-on-surface-variant">
                               Date {booking.date} · {booking.time}
                             </td>
-                            <td className="p-4 text-on-surface-variant font-medium">{booking.title}</td>
+                            <td className="p-4 text-on-surface-variant font-medium">
+                              <div className="font-bold text-on-surface mb-0.5">{booking.title}</div>
+                              <button
+                                onClick={() => handleOpenEditMembers(booking)}
+                                className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
+                              >
+                                <span className="material-symbols-outlined text-[13px]">group</span>
+                                {booking.attendees && booking.attendees.length > 0 
+                                  ? `${booking.attendees.length} Members` 
+                                  : "+ Add Members"}
+                              </button>
+                            </td>
                             <td className="p-4">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                Approved
-                              </span>
+                              <button
+                                onClick={() => {
+                                  setBookings(bookings.map(b => b.id === booking.id ? { ...b, checkedIn: !b.checkedIn } : b));
+                                }}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border transition-all ${
+                                  booking.checkedIn
+                                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                    : "bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30"
+                                }`}
+                                title="Auto-approves after 15 minutes or click to approve immediately"
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${booking.checkedIn ? 'bg-emerald-400' : 'bg-blue-400 animate-pulse'}`}></span>
+                                {booking.checkedIn ? "Approved / Checked In" : "Auto-Approved (15m Window)"}
+                              </button>
                             </td>
                             <td className="p-4">
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-xs font-semibold text-on-surface">
@@ -985,10 +1046,26 @@ export default function AdminPortal() {
                               </span>
                             </td>
                             <td className="p-4 text-right flex items-center justify-end gap-2">
+                              <a
+                                href={getWhatsAppShareLink(booking)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 px-2.5 py-1.5 rounded-lg border border-emerald-500/30 transition-all flex items-center gap-1 shadow-sm"
+                                title="Share meeting reminder on WhatsApp"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">chat</span> WhatsApp
+                              </a>
+                              <button 
+                                onClick={() => handleOpenEditMembers(booking)}
+                                className="text-xs font-bold text-primary bg-primary/20 hover:bg-primary/30 px-2.5 py-1.5 rounded-lg border border-primary/30 transition-all flex items-center gap-1 shadow-sm"
+                                title="Edit meeting participants"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">person_add</span> Edit
+                              </button>
                               <button 
                                 onClick={() => handleOpenExtendModal(booking)}
                                 className="text-xs font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-lg border border-amber-500/30 transition-all flex items-center gap-1 shadow-sm"
-                                title="Extend meeting duration & notify upcoming teams"
+                                title="Extend meeting duration"
                               >
                                 <span className="material-symbols-outlined text-[14px]">update</span> Extend
                               </button>
@@ -1317,6 +1394,7 @@ export default function AdminPortal() {
                 <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1">
                   <div className="flex items-center gap-2 border-r border-outline-variant/30 pr-3">
                     <span className="font-label-sm text-xs text-outline uppercase tracking-wider">Capacity</span>
+                    <button onClick={() => setCapacityFilter("All")} className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "All" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}>All</button>
                     <button onClick={() => setCapacityFilter("2-5")} className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "2-5" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}>2-5</button>
                     <button onClick={() => setCapacityFilter("6-12")} className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "6-12" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}>6-12</button>
                     <button onClick={() => setCapacityFilter("12+")} className={`px-3 py-1.5 rounded-full border transition-colors font-label-md text-xs whitespace-nowrap ${capacityFilter === "12+" ? 'bg-primary/20 border-primary text-primary font-bold' : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'}`}>12+</button>
@@ -1842,8 +1920,25 @@ export default function AdminPortal() {
                 <input type="text" value={editRoomLocation} onChange={(e) => setEditRoomLocation(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-outline">Image URL</label>
-                <input type="text" value={editRoomImage} onChange={(e) => setEditRoomImage(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" />
+                <label className="text-xs font-semibold text-outline">Upload Photo or Image URL</label>
+                <div className="flex flex-col gap-2 mt-1">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (reader.result) setEditRoomImage(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="text-xs text-on-surface file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30 cursor-pointer"
+                  />
+                  <input type="text" value={editRoomImage} onChange={(e) => setEditRoomImage(e.target.value)} className="w-full bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" placeholder="Or paste image URL" />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-outline">Amenities</label>
@@ -1936,8 +2031,25 @@ export default function AdminPortal() {
                 <input type="text" value={addRoomLocation} onChange={(e) => setAddRoomLocation(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" placeholder="e.g. Floor 3, West Wing" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-outline">Image URL</label>
-                <input type="text" value={addRoomImage} onChange={(e) => setAddRoomImage(e.target.value)} className="w-full mt-1 bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" placeholder="Optional URL" />
+                <label className="text-xs font-semibold text-outline">Upload Photo or Image URL</label>
+                <div className="flex flex-col gap-2 mt-1">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (reader.result) setAddRoomImage(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="text-xs text-on-surface file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30 cursor-pointer"
+                  />
+                  <input type="text" value={addRoomImage} onChange={(e) => setAddRoomImage(e.target.value)} className="w-full bg-surface-container-highest/30 border border-outline-variant/30 rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-primary text-sm shadow-inner" placeholder="Or paste image URL" />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-outline">Amenities</label>
@@ -2168,6 +2280,161 @@ export default function AdminPortal() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Edit Participants Modal */}
+      {isEditMembersModalOpen && targetEditBooking && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="glass-panel border border-outline-variant/30 rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center pb-3 border-b border-outline-variant/20 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-2xl">group_add</span>
+                <div>
+                  <h3 className="font-title-md text-base font-bold text-on-surface">Edit Meeting Participants</h3>
+                  <p className="text-[11px] text-on-surface-variant">{targetEditBooking.title} • {targetEditBooking.roomName}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsEditMembersModalOpen(false)} className="text-outline hover:text-on-surface text-lg font-bold">✕</button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">Current Attendees</label>
+                <div className="flex flex-wrap gap-1.5 p-3 bg-surface-container-low border border-outline-variant/30 rounded-xl min-h-[50px]">
+                  {editMembersList.length === 0 ? (
+                    <span className="text-outline italic text-[11px]">No attendees added yet.</span>
+                  ) : (
+                    editMembersList.map((email) => (
+                      <span key={email} className="inline-flex items-center gap-1 bg-primary/20 text-primary border border-primary/30 text-xs px-2.5 py-1 rounded-md font-medium">
+                        {email}
+                        <button
+                          type="button"
+                          onClick={() => setEditMembersList(editMembersList.filter(e => e !== email))}
+                          className="hover:text-red-400 font-bold ml-1 text-xs"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">Add New Participant Email</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="e.g. colleague@company.com"
+                    value={newMemberEmailInput}
+                    onChange={(e) => setNewMemberEmailInput(e.target.value)}
+                    className="flex-1 bg-surface-container-low border border-outline-variant/30 rounded-xl py-2 px-3 text-on-surface outline-none focus:border-primary font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newMemberEmailInput.trim() && !editMembersList.includes(newMemberEmailInput.trim())) {
+                        setEditMembersList([...editMembersList, newMemberEmailInput.trim().toLowerCase()]);
+                        setNewMemberEmailInput("");
+                      }
+                    }}
+                    className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 font-bold rounded-xl"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-outline-variant/15">
+                <button
+                  onClick={() => setIsEditMembersModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setBookings(bookings.map(b => b.id === targetEditBooking.id ? { ...b, attendees: editMembersList } : b));
+                    setIsEditMembersModalOpen(false);
+                  }}
+                  className="px-5 py-2 btn-gradient-primary text-white font-bold rounded-xl shadow-lg"
+                >
+                  Save Members
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Room History Modal */}
+      {isRoomHistoryModalOpen && targetRoomHistory && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="glass-panel border border-outline-variant/30 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center pb-3 border-b border-outline-variant/20 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-2xl">history</span>
+                <div>
+                  <h3 className="font-title-md text-base font-bold text-on-surface">{targetRoomHistory.name} - Room History</h3>
+                  <p className="text-[11px] text-on-surface-variant">{targetRoomHistory.location} • Capacity: {targetRoomHistory.seats} Pax</p>
+                </div>
+              </div>
+              <button onClick={() => setIsRoomHistoryModalOpen(false)} className="text-outline hover:text-on-surface text-lg font-bold">✕</button>
+            </div>
+
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+              <div className="bg-surface-container-low border border-outline-variant/20 rounded-xl p-3">
+                <h4 className="font-bold text-xs text-primary uppercase mb-2">Past & Current Bookings</h4>
+                {bookings.filter(b => b.roomId === targetRoomHistory.id || b.roomName === targetRoomHistory.name).length === 0 ? (
+                  <p className="text-xs text-outline italic">No booking history recorded for this room yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {bookings.filter(b => b.roomId === targetRoomHistory.id || b.roomName === targetRoomHistory.name).map(b => (
+                      <div key={b.id} className="p-2 bg-surface-container-high rounded-lg text-xs flex justify-between items-center">
+                        <div>
+                          <span className="font-bold text-on-surface block">{b.title}</span>
+                          <span className="text-[10px] text-on-surface-variant">Date {b.date} • {b.time} (By: {b.booker})</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          Confirmed
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-surface-container-low border border-outline-variant/20 rounded-xl p-3">
+                <h4 className="font-bold text-xs text-amber-400 uppercase mb-2">Equipment & Supply Reports</h4>
+                {supplies.filter(s => s.roomId.toString() === targetRoomHistory.id).length === 0 ? (
+                  <p className="text-xs text-outline italic">No equipment reports or missing item logs for this room.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {supplies.filter(s => s.roomId.toString() === targetRoomHistory.id).map(s => (
+                      <div key={s.id} className="p-2 bg-surface-container-high rounded-lg text-xs flex justify-between items-center">
+                        <div>
+                          <span className="font-bold text-on-surface block">{s.itemName} (Qty: {s.quantity})</span>
+                          <span className="text-[10px] text-on-surface-variant">Reported by {s.reportedBy}</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          {s.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-outline-variant/15 mt-4">
+              <button
+                onClick={() => setIsRoomHistoryModalOpen(false)}
+                className="px-5 py-2 btn-gradient-primary text-white font-bold text-xs rounded-xl"
+              >
+                Close History
+              </button>
+            </div>
           </div>
         </div>
       )}
