@@ -2,6 +2,7 @@
 export async function sendWhatsAppNotification(phoneNumber: string, message: string): Promise<boolean> {
   const instanceId = process.env.GREEN_API_INSTANCE_ID;
   const apiToken = process.env.GREEN_API_TOKEN;
+  const baseUrl = process.env.GREEN_API_URL || 'https://7107.api.greenapi.com';
 
   if (!instanceId || !apiToken) {
     console.log(`[Green API WhatsApp Mode: Unconfigured / Simulated]`);
@@ -14,7 +15,7 @@ export async function sendWhatsAppNotification(phoneNumber: string, message: str
     const chatId = `${formattedPhone}@c.us`;
 
     const response = await fetch(
-      `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
+      `${baseUrl}/waInstance${instanceId}/sendMessage/${apiToken}`,
       {
         method: 'POST',
         headers: {
