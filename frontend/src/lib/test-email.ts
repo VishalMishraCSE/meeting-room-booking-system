@@ -18,7 +18,7 @@ async function runTest() {
     'Floor 4, North Wing',
     new Date(),
     new Date(Date.now() + 30 * 60 * 1000),
-    'Lumina Reserve Setup Verification'
+    'Payswiff Reserve Setup Verification'
   );
 
   if (success) {

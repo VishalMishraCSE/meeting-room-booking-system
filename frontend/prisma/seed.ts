@@ -125,15 +125,15 @@ async function main() {
   // 5. Create Rooms and their Amenities
   console.log('🚪 Seeding meeting rooms & amenities...');
 
-  // Alpha Boardroom
-  const alphaBoardroom = await prisma.room.create({
+  // Conference Room 1
+  const confRoom1 = await prisma.room.create({
     data: {
-      name: 'Alpha Boardroom',
-      roomNumber: '401',
+      name: 'Conference Room 1',
+      roomNumber: '501',
       capacity: 24,
-      floorId: floor4.id,
-      location: 'Floor 4, North Wing',
-      description: 'Executive boardroom equipped with state-of-the-art teleconferencing systems.',
+      floorId: floor5.id,
+      location: 'Floor 5',
+      description: 'Executive conference space equipped with state-of-the-art teleconferencing systems.',
       status: 'Available',
       heroImageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC0ol9PjeXi3Bj3rAKPRtdaOebaW7NNioctjsaVdX7XXDHcMPx_svn61gM1PJ1wPz0vjXKD-7D32w1RqCmMAgFgjllRLV_pvza_syZEMmDr8tWlPrugEnX9HPNiW0sdQVM_vBa721IlOrSEhBuukuN_P4KVfOALIBSmdY35kvwa5DKMRp-hGSkB1TIecPWpbFI4SEdbSXOcWqrXKF4EgJNlPenEWkuFyLvvAkKwMBL0odzWpyM_UmkdnlnJuk8zQmv6CZsY1JLg26Nm',
       avgRating: 4.8,
@@ -147,14 +147,14 @@ async function main() {
     },
   });
 
-  // Beta Lab
-  const betaLab = await prisma.room.create({
+  // Conference Room 2
+  const confRoom2 = await prisma.room.create({
     data: {
-      name: 'Beta Lab',
-      roomNumber: '402',
+      name: 'Conference Room 2',
+      roomNumber: '502',
       capacity: 12,
-      floorId: floor4.id,
-      location: 'Floor 4, East Wing',
+      floorId: floor5.id,
+      location: 'Floor 5',
       description: 'Collaborative development space and testing environment.',
       status: 'Maintenance',
       heroImageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBmiAyfyc6MokYdRyOd9u11Ozjsl8e4bHGpUuQPTX_3whwNs35wgOOxpJcYxT2HK-tpwrVB3RFPMksfUlu0qsbpIfWCSKn3HdhIF_fdpvJFJxe_IDtNswB2BTRGN17IABhBtwyXPYiq4Z_ggChHTxjBWgiYble_1xZVpbd6SGWA4UFAQ5WiPjLKqrMJx4nJ6OKhIcz7OIFqJchasDT5113SaxI_sE4SrGRWRqe0SSje7iT3IiVFtlR8xs43rV5WtT-gYaFLOFSDgvx-',
@@ -168,14 +168,14 @@ async function main() {
     },
   });
 
-  // Studio C
-  const studioC = await prisma.room.create({
+  // Conference Room 3
+  const confRoom3 = await prisma.room.create({
     data: {
-      name: 'Studio C',
-      roomNumber: '501',
+      name: 'Conference Room 3',
+      roomNumber: '503',
       capacity: 4,
       floorId: floor5.id,
-      location: 'Floor 5, South Wing',
+      location: 'Floor 5',
       description: 'Compact focus room for quick syncs and quiet work sessions.',
       status: 'Available',
       heroImageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAFGHdHc3tTydeu1GdafZl4LlA9vHBRrBLuCCSi0jE8Y9Bg8eHgyAUcmjBzxoHCxDEKj8h2T2tue6xTpMGGIRqZyEOrizAXjJKS9g7Gn4TawU13VgqDH_HAcT1yZ2z2uodGRQMawisGkZMCFmJReN8Sh4ZIcfchLZdJ8nGQmTbWXYldxwYn3vHhP52YUP4yNbtVasfxb0RPueaB68oqfzgsPgi2mLCQWvi6Wubnwr3aAjZuocPyMj8_Plw9B1ij7I8lPQUM4SFaB7Mm',
@@ -188,14 +188,14 @@ async function main() {
     },
   });
 
-  // Helios Suite
-  const heliosSuite = await prisma.room.create({
+  // Conference Room 4
+  const confRoom4 = await prisma.room.create({
     data: {
-      name: 'Helios Suite',
-      roomNumber: '201',
+      name: 'Conference Room 4',
+      roomNumber: '504',
       capacity: 8,
-      floorId: floor2.id,
-      location: 'Floor 2, West Wing',
+      floorId: floor5.id,
+      location: 'Floor 5',
       description: 'Mid-sized presentation space with vibrant lighting controls.',
       status: 'Available',
       heroImageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop',
@@ -210,14 +210,14 @@ async function main() {
     },
   });
 
-  // Prometheus Hall
-  const prometheusHall = await prisma.room.create({
+  // Conference Room 5
+  const confRoom5 = await prisma.room.create({
     data: {
-      name: 'Prometheus Hall',
-      roomNumber: '301',
+      name: 'Conference Room 5',
+      roomNumber: '505',
       capacity: 16,
-      floorId: floor3.id,
-      location: 'Floor 3, East Wing',
+      floorId: floor5.id,
+      location: 'Floor 5',
       description: 'Spacious workshop room ideal for interactive training sessions.',
       status: 'Available',
       heroImageUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=600&auto=format&fit=crop',
@@ -233,11 +233,33 @@ async function main() {
     },
   });
 
+  // Conference Room 6
+  const confRoom6 = await prisma.room.create({
+    data: {
+      name: 'Conference Room 6',
+      roomNumber: '506',
+      capacity: 10,
+      floorId: floor5.id,
+      location: 'Floor 5',
+      description: 'Modern collaborative conference room with dual displays and conference mic system.',
+      status: 'Available',
+      heroImageUrl: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=600&auto=format&fit=crop',
+      avgRating: 4.9,
+      amenities: {
+        create: [
+          { name: 'Video Conf', icon: 'videocam' },
+          { name: 'Whiteboard', icon: 'desktop_windows' },
+          { name: 'Projector', icon: 'cast' },
+        ],
+      },
+    },
+  });
+
   // 6. Seed Room Supplies & Missing Equipment Reports
   console.log('📦 Seeding room supplies & missing item reports...');
   await prisma.roomSupply.create({
     data: {
-      roomId: alphaBoardroom.id,
+      roomId: confRoom1.id,
       itemName: 'High-Speed HDMI 2.1 Cable (4K)',
       quantity: 2,
       status: 'Missing',
@@ -248,7 +270,7 @@ async function main() {
 
   await prisma.roomSupply.create({
     data: {
-      roomId: prometheusHall.id,
+      roomId: confRoom5.id,
       itemName: 'Dry Erase Whiteboard Markers (Pack of 4)',
       quantity: 3,
       status: 'To Buy',
@@ -259,7 +281,7 @@ async function main() {
 
   await prisma.roomSupply.create({
     data: {
-      roomId: betaLab.id,
+      roomId: confRoom2.id,
       itemName: 'Wireless Presenter Remote & AA Batteries',
       quantity: 1,
       status: 'Purchased',

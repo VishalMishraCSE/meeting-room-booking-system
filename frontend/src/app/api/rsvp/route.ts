@@ -115,7 +115,7 @@ export async function GET(request: Request) {
             <h1>RSVP Recorded</h1>
             <p>You have successfully <strong>${status.toLowerCase()}</strong> the invitation for the meeting:</p>
             <p class="meta">"${meetingTitle}" @ ${roomName}</p>
-            <p class="footer">Lumina Spatial Management Suite</p>
+            <p class="footer">Payswiff Spatial Management Suite</p>
           </div>
         </body>
       </html>

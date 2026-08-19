@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import PayswiffLogo from "@/components/PayswiffLogo";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [authMode, setAuthMode] = useState<"signin" | "signup" | "forgot">("signin");
   
   // Sign In state
   const [email, setEmail] = useState("");
@@ -16,6 +17,15 @@ export default function LoginPage() {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
   const [signUpRole, setSignUpRole] = useState<"Employee" | "Manager" | "Admin">("Employee");
+
+  // Account Recovery / Forgot Password state
+  const [recoveryStep, setRecoveryStep] = useState<"request" | "verify" | "reset">("request");
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoveryOtp, setRecoveryOtp] = useState("");
+  const [recoveryNewName, setRecoveryNewName] = useState("");
+  const [recoveryNewPassword, setRecoveryNewPassword] = useState("");
+  const [recoveryConfirmPassword, setRecoveryConfirmPassword] = useState("");
+  const [recoveryCurrentName, setRecoveryCurrentName] = useState("");
 
   const [rememberMe, setRememberMe] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -127,6 +137,140 @@ export default function LoginPage() {
     }
   };
 
+  const handleSendRecoveryOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoveryEmail.trim()) {
+      setErrorMessage("Please enter your registered corporate email.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: recoveryEmail.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send security code.");
+      }
+
+      setRecoveryCurrentName(data.currentName || "");
+      setRecoveryNewName(data.currentName || "");
+      setRecoveryStep("verify");
+      setSuccessMessage("A 6-digit security code has been sent to your email!");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to send security code.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyRecoveryOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoveryOtp.trim() || recoveryOtp.trim().length !== 6) {
+      setErrorMessage("Please enter the complete 6-digit security code sent to your email.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: recoveryEmail.trim(),
+          otp: recoveryOtp.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Invalid security code.");
+      }
+
+      setRecoveryCurrentName(data.currentName || "");
+      if (!recoveryNewName) setRecoveryNewName(data.currentName || "");
+      setRecoveryStep("reset");
+      setSuccessMessage("Security code verified! Please set your new password below.");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to verify security code.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!recoveryNewPassword.trim()) {
+      setErrorMessage("Please enter your new password.");
+      return;
+    }
+
+    if (recoveryNewPassword.length < 6) {
+      setErrorMessage("New password must be at least 6 characters long.");
+      return;
+    }
+
+    if (recoveryNewPassword !== recoveryConfirmPassword) {
+      setErrorMessage("New passwords do not match. Please re-enter.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch("/api/auth/reset-credentials", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: recoveryEmail.trim(),
+          otp: recoveryOtp.trim(),
+          newName: recoveryNewName.trim(),
+          newPassword: recoveryNewPassword.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update credentials.");
+      }
+
+      setEmail(recoveryEmail.trim());
+      setPassword(recoveryNewPassword.trim());
+      setSuccessMessage("Your new password has been updated in the database! You can now sign in.");
+      setAuthMode("signin");
+      setRecoveryStep("request");
+      setRecoveryOtp("");
+      setRecoveryNewPassword("");
+      setRecoveryConfirmPassword("");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to update credentials.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const stars = [
     { top: "10%", left: "15%", delay: "0.2s", size: "2px" },
     { top: "25%", left: "80%", delay: "1.5s", size: "1px" },
@@ -191,99 +335,82 @@ export default function LoginPage() {
             <div className="absolute inset-0 bg-primary/10 mix-blend-overlay"></div>
           </div>
 
-          <div className="relative z-10 flex flex-col justify-between p-12 w-full">
+          <div className="relative z-10 flex flex-col justify-start p-12 w-full">
             <div>
-              <h1 className="font-headline-xl text-3xl text-white tracking-tight flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  meeting_room
-                </span>
-                Lumina Reserve
-              </h1>
-              <p className="mt-4 font-body-lg text-lg text-secondary/80 max-w-md">
-                Enterprise workspace optimization and intelligent resource management.
-              </p>
-            </div>
-
-            <div className="glass-panel rounded-2xl p-6 max-w-lg shadow-2xl transition-all duration-500 hover:border-primary/30">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="bg-primary/20 p-3 rounded-lg flex items-center justify-center border border-primary/20">
-                  <span className="material-symbols-outlined text-primary">analytics</span>
-                </div>
-                <div>
-                  <p className="font-headline-md text-xl font-bold text-white">99.9%</p>
-                  <p className="font-label-sm text-xs text-secondary/80 uppercase tracking-widest">System Reliability</p>
-                </div>
-              </div>
-              <p className="font-body-md text-sm text-on-surface-variant italic leading-relaxed">
-                &ldquo;Lumina Reserve transformed our spatial efficiency, providing unparalleled clarity into our global real estate portfolio.&rdquo;
-              </p>
-              <div className="mt-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-surface-variant/80 flex items-center justify-center border border-outline-variant/50">
-                  <span className="material-symbols-outlined text-xs text-on-surface-variant">person</span>
-                </div>
-                <p className="font-label-md text-xs text-secondary">Director of Operations, Global Tech</p>
+              <div className="mb-2">
+                <PayswiffLogo size="xl" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Sign In / Sign Up Form */}
+        {/* Right Column: Sign In / Sign Up / Recovery Form */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-surface/10 backdrop-blur-md relative z-10">
           <div className="w-full max-w-md flex flex-col gap-6">
             {/* Mobile Branding */}
-            <div className="lg:hidden mb-4 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-container-high mb-3 border border-outline-variant/20 shadow-xl">
-                <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  meeting_room
-                </span>
-              </div>
-              <h1 className="font-headline-xl text-3xl text-on-surface font-extrabold">Lumina Reserve</h1>
+            <div className="lg:hidden mb-4 flex justify-center">
+              <PayswiffLogo size="lg" />
             </div>
 
             {/* Form Container */}
-            <div className="glass-panel rounded-2xl p-8 shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-primary/5">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-tertiary"></div>
+            <div className="glass-panel rounded-2xl p-8 shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-red-500/10">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-orange-500 to-red-500"></div>
               
-              {/* Sign In / Sign Up Header Tabs */}
-              <div className="flex items-center justify-between border-b border-outline-variant/20 pb-4 mb-6">
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode("signin");
-                      setErrorMessage("");
-                      setSuccessMessage("");
-                    }}
-                    className={`font-headline-md text-lg font-bold transition-all relative pb-2 ${
-                      authMode === "signin"
-                        ? "text-primary border-b-2 border-primary"
-                        : "text-on-surface-variant hover:text-on-surface"
-                    }`}
-                  >
-                    Sign In
-                  </button>
+              {/* Header Tabs */}
+              {authMode !== "forgot" ? (
+                <div className="flex items-center justify-between border-b border-outline-variant/20 pb-4 mb-6">
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("signin");
+                        setErrorMessage("");
+                        setSuccessMessage("");
+                      }}
+                      className={`font-headline-md text-lg font-bold transition-all relative pb-2 ${
+                        authMode === "signin"
+                          ? "text-red-600 border-b-2 border-red-600"
+                          : "text-on-surface-variant hover:text-on-surface"
+                      }`}
+                    >
+                      Sign In
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode("signup");
-                      setErrorMessage("");
-                      setSuccessMessage("");
-                    }}
-                    className={`font-headline-md text-lg font-bold transition-all relative pb-2 ${
-                      authMode === "signup"
-                        ? "text-primary border-b-2 border-primary"
-                        : "text-on-surface-variant hover:text-on-surface"
-                    }`}
-                  >
-                    Sign Up
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("signup");
+                        setErrorMessage("");
+                        setSuccessMessage("");
+                      }}
+                      className={`font-headline-md text-lg font-bold transition-all relative pb-2 ${
+                        authMode === "signup"
+                          ? "text-red-600 border-b-2 border-red-600"
+                          : "text-on-surface-variant hover:text-on-surface"
+                      }`}
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                  
+                  <span className="text-[11px] font-semibold text-outline uppercase tracking-wider">
+                    {authMode === "signin" ? "Portal Access" : "New Account"}
+                  </span>
                 </div>
-                
-                <span className="text-[11px] font-semibold text-outline uppercase tracking-wider">
-                  {authMode === "signin" ? "Portal Access" : "New Account"}
-                </span>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between border-b border-outline-variant/20 pb-4 mb-6">
+                  <div>
+                    <h2 className="font-headline-md text-lg font-bold text-red-600 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-red-600 text-[20px]">lock_reset</span>
+                      Account Recovery
+                    </h2>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Reset password or update username</p>
+                  </div>
+                  <span className="text-[10px] font-bold tracking-widest text-red-500 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-full uppercase">
+                    OTP Security
+                  </span>
+                </div>
+              )}
 
               {/* Status Alert Messages */}
               {errorMessage && (
@@ -300,7 +427,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* SIGN IN FORM */}
+              {/* 1. SIGN IN FORM */}
               {authMode === "signin" && (
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-1.5">
@@ -308,11 +435,11 @@ export default function LoginPage() {
                       Corporate Email
                     </label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
                         <span className="material-symbols-outlined text-lg">mail</span>
                       </div>
                       <input 
-                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                         id="email" 
                         placeholder="e.g. employee@company.com" 
                         required 
@@ -330,11 +457,11 @@ export default function LoginPage() {
                       </label>
                     </div>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
                         <span className="material-symbols-outlined text-lg">lock</span>
                       </div>
                       <input 
-                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                         id="password" 
                         placeholder="••••••••" 
                         required 
@@ -345,21 +472,38 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center">
-                    <input 
-                      className="h-4 w-4 rounded border-outline-variant/50 bg-surface-container-low text-primary focus:ring-primary cursor-pointer"
-                      id="remember-me" 
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                    />
-                    <label className="ml-2 block font-body-sm text-xs text-on-surface-variant cursor-pointer" htmlFor="remember-me">
-                      Remember this device for 30 days
-                    </label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <input 
+                        className="h-4 w-4 rounded border-outline-variant/50 bg-surface-container-low text-red-600 accent-red-600 focus:ring-red-500 cursor-pointer"
+                        id="remember-me" 
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                      />
+                      <label className="ml-2 block font-body-sm text-xs text-on-surface-variant cursor-pointer" htmlFor="remember-me">
+                        Remember device
+                      </label>
+                    </div>
+
+                    {/* Forgot Password / Username Trigger Link */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("forgot");
+                        setRecoveryStep("request");
+                        setRecoveryEmail(email || "");
+                        setErrorMessage("");
+                        setSuccessMessage("");
+                      }}
+                      className="text-xs text-red-600 hover:text-red-500 font-semibold hover:underline transition-colors"
+                    >
+                      Forgot Password or Username?
+                    </button>
                   </div>
 
                   <button 
-                    className={`w-full h-12 btn-gradient-primary text-white font-label-md text-sm font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-primary/20 active:scale-98 ${
+                    className={`w-full h-12 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-label-md text-sm font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 hover:shadow-red-600/40 active:scale-98 ${
                       isSubmitting ? "opacity-75 cursor-not-allowed" : ""
                     }`}
                     type="submit"
@@ -380,7 +524,7 @@ export default function LoginPage() {
                 </form>
               )}
 
-              {/* SIGN UP FORM */}
+              {/* 2. SIGN UP FORM */}
               {authMode === "signup" && (
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-1.5">
@@ -388,11 +532,11 @@ export default function LoginPage() {
                       Full Name
                     </label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
                         <span className="material-symbols-outlined text-lg">person</span>
                       </div>
                       <input 
-                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                         id="signUpName" 
                         placeholder="e.g. Sarah Jenkins" 
                         required 
@@ -408,11 +552,11 @@ export default function LoginPage() {
                       Corporate Email
                     </label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
                         <span className="material-symbols-outlined text-lg">mail</span>
                       </div>
                       <input 
-                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                         id="signUpEmail" 
                         placeholder="s.jenkins@company.com" 
                         required 
@@ -428,11 +572,11 @@ export default function LoginPage() {
                       Password
                     </label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
                         <span className="material-symbols-outlined text-lg">lock</span>
                       </div>
                       <input 
-                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                         id="signUpPassword" 
                         placeholder="At least 6 characters" 
                         required 
@@ -456,7 +600,7 @@ export default function LoginPage() {
                           onClick={() => setSignUpRole(r)}
                           className={`py-2 px-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
                             signUpRole === r
-                              ? "bg-primary/20 text-primary border border-primary/30 shadow-sm"
+                              ? "bg-red-600/20 text-red-500 border border-red-500/40 shadow-sm"
                               : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/40"
                           }`}
                         >
@@ -467,7 +611,7 @@ export default function LoginPage() {
                   </div>
 
                   <button 
-                    className={`w-full h-12 btn-gradient-primary text-white font-label-md text-sm font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-primary/20 active:scale-98 ${
+                    className={`w-full h-12 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-label-md text-sm font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 hover:shadow-red-600/40 active:scale-98 ${
                       isSubmitting ? "opacity-75 cursor-not-allowed" : ""
                     }`}
                     type="submit"
@@ -488,6 +632,234 @@ export default function LoginPage() {
                 </form>
               )}
 
+              {/* 3. FORGOT PASSWORD OR USERNAME RECOVERY FORM */}
+              {authMode === "forgot" && (
+                <div className="space-y-4">
+                  {/* STEP 1: REQUEST OTP */}
+                  {recoveryStep === "request" && (
+                    <form onSubmit={handleSendRecoveryOtp} className="space-y-4">
+                      <p className="text-xs text-on-surface-variant leading-relaxed">
+                        Enter your registered corporate Gmail address. We will send a secure <strong className="text-red-500">6-digit security code (OTP)</strong> to verify your identity before allowing you to set a new password or username.
+                      </p>
+
+                      <div className="space-y-1.5">
+                        <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="recoveryEmail">
+                          Corporate Gmail Address
+                        </label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
+                            <span className="material-symbols-outlined text-lg">mail</span>
+                          </div>
+                          <input 
+                            className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                            id="recoveryEmail" 
+                            placeholder="e.g. employee@company.com" 
+                            required 
+                            type="email"
+                            value={recoveryEmail}
+                            onChange={(e) => setRecoveryEmail(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <button 
+                        className={`w-full h-12 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-label-md text-sm font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 hover:shadow-red-600/40 active:scale-98 ${
+                          isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+                        }`}
+                        type="submit"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            Sending Security Code...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-sm">send</span>
+                            Send Security Code (OTP)
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* STEP 2: VERIFY 6-DIGIT OTP */}
+                  {recoveryStep === "verify" && (
+                    <form onSubmit={handleVerifyRecoveryOtp} className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-300">
+                      <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 flex items-center justify-between">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="material-symbols-outlined text-sm shrink-0">mark_email_read</span>
+                          <span className="truncate">Code sent to: <strong>{recoveryEmail}</strong></span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRecoveryStep("request");
+                            setErrorMessage("");
+                            setSuccessMessage("");
+                          }}
+                          className="text-[11px] text-red-500 underline font-bold hover:text-red-400 shrink-0 ml-2"
+                        >
+                          Change
+                        </button>
+                      </div>
+
+                      {/* 6-Digit OTP Field */}
+                      <div className="space-y-1.5">
+                        <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="recoveryOtp">
+                          Enter 6-Digit Security Code <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
+                            <span className="material-symbols-outlined text-lg">verified_user</span>
+                          </div>
+                          <input 
+                            className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-red-500/40 rounded-xl font-mono text-center tracking-[6px] text-lg font-bold text-red-500 placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-2 focus:ring-red-500/30 focus:outline-none transition-all duration-200 shadow-inner"
+                            id="recoveryOtp" 
+                            placeholder="123456" 
+                            maxLength={6}
+                            required 
+                            type="text"
+                            value={recoveryOtp}
+                            onChange={(e) => setRecoveryOtp(e.target.value.replace(/\D/g, ""))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="text-on-surface-variant">Didn&apos;t receive the code?</span>
+                        <button
+                          type="button"
+                          onClick={handleSendRecoveryOtp}
+                          disabled={isSubmitting}
+                          className="text-red-600 font-bold hover:underline hover:text-red-500"
+                        >
+                          Resend Code
+                        </button>
+                      </div>
+
+                      <button 
+                        className={`w-full h-12 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-label-md text-sm font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 hover:shadow-red-600/40 active:scale-98 ${
+                          isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+                        }`}
+                        type="submit"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            Verifying Security Code...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-sm">verified</span>
+                            Verify Security Code
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* STEP 3: SET NEW PASSWORD & UPDATE USERNAME */}
+                  {recoveryStep === "reset" && (
+                    <form onSubmit={handleResetCredentials} className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-300">
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm shrink-0">check_circle</span>
+                        <span>Security verified for: <strong>{recoveryEmail}</strong></span>
+                      </div>
+
+                      {/* Username / Name Edit Field */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="recoveryNewName">
+                            Username / Full Name
+                          </label>
+                          {recoveryCurrentName && (
+                            <span className="text-[10px] text-outline">Current: {recoveryCurrentName}</span>
+                          )}
+                        </div>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
+                            <span className="material-symbols-outlined text-lg">person</span>
+                          </div>
+                          <input 
+                            className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                            id="recoveryNewName" 
+                            placeholder="Enter new username" 
+                            type="text"
+                            value={recoveryNewName}
+                            onChange={(e) => setRecoveryNewName(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* New Password Field */}
+                      <div className="space-y-1.5">
+                        <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="recoveryNewPassword">
+                          Set New Password <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
+                            <span className="material-symbols-outlined text-lg">lock</span>
+                          </div>
+                          <input 
+                            className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                            id="recoveryNewPassword" 
+                            placeholder="At least 6 characters" 
+                            required
+                            type="password"
+                            value={recoveryNewPassword}
+                            onChange={(e) => setRecoveryNewPassword(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Confirm New Password Field */}
+                      <div className="space-y-1.5">
+                        <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="recoveryConfirmPassword">
+                          Confirm New Password <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
+                            <span className="material-symbols-outlined text-lg">check</span>
+                          </div>
+                          <input 
+                            className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                            id="recoveryConfirmPassword" 
+                            placeholder="Re-enter new password" 
+                            required
+                            type="password"
+                            value={recoveryConfirmPassword}
+                            onChange={(e) => setRecoveryConfirmPassword(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <button 
+                        className={`w-full h-12 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-label-md text-sm font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 hover:shadow-red-600/40 active:scale-98 ${
+                          isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+                        }`}
+                        type="submit"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            Updating Database...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-sm">save</span>
+                            Save & Update New Password
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
               {/* Mode Switch Helper */}
               <div className="mt-6 pt-4 border-t border-outline-variant/20 text-center">
                 {authMode === "signin" ? (
@@ -495,32 +867,46 @@ export default function LoginPage() {
                     Don&apos;t have an account yet?{" "}
                     <button
                       type="button"
-                      onClick={() => setAuthMode("signup")}
-                      className="text-primary font-bold hover:underline"
+                      onClick={() => {
+                        setAuthMode("signup");
+                        setErrorMessage("");
+                        setSuccessMessage("");
+                      }}
+                      className="text-red-600 font-bold hover:underline hover:text-red-500"
                     >
                       Sign Up Now
                     </button>
                   </p>
-                ) : (
+                ) : authMode === "signup" ? (
                   <p className="text-xs text-on-surface-variant">
                     Already have a corporate account?{" "}
                     <button
                       type="button"
-                      onClick={() => setAuthMode("signin")}
-                      className="text-primary font-bold hover:underline"
+                      onClick={() => {
+                        setAuthMode("signin");
+                        setErrorMessage("");
+                        setSuccessMessage("");
+                      }}
+                      className="text-red-600 font-bold hover:underline hover:text-red-500"
                     >
                       Sign In
                     </button>
                   </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("signin");
+                      setErrorMessage("");
+                      setSuccessMessage("");
+                    }}
+                    className="text-xs text-red-600 font-bold hover:underline hover:text-red-500 flex items-center justify-center gap-1 mx-auto"
+                  >
+                    <span className="material-symbols-outlined text-sm">arrow_back</span>
+                    Back to Sign In
+                  </button>
                 )}
               </div>
-            </div>
-
-            {/* Footer Links */}
-            <div className="text-center flex justify-center gap-6 font-label-sm text-xs text-on-surface-variant/80">
-              <a className="hover:text-primary transition-colors" href="#">Privacy Policy</a>
-              <a className="hover:text-primary transition-colors" href="#">Terms of Service</a>
-              <a className="hover:text-primary transition-colors" href="#">Contact IT Support</a>
             </div>
           </div>
         </div>

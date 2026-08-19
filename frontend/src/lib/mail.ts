@@ -23,7 +23,7 @@ function getTransporter() {
   });
 }
 
-const fromAddress = process.env.SMTP_FROM || '"Lumina Reserve" <no-reply@lumina.com>';
+const fromAddress = process.env.SMTP_FROM || '"Payswiff Reserve" <no-reply@payswiff.com>';
 
 interface MailOptions {
   to: string;
@@ -92,16 +92,16 @@ function createIcsContent(
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Lumina Reserve//Spatial Management Suite//EN',
+    'PRODID:-//Payswiff Reserve//Spatial Management Suite//EN',
     'CALSCALE:GREGORIAN',
     `METHOD:${method}`,
     'BEGIN:VEVENT',
-    `UID:${uid}@lumina.com`,
+    `UID:${uid}@payswiff.com`,
     `DTSTAMP:${dtStamp}`,
     `DTSTART:${dtStart}`,
     `DTEND:${dtEnd}`,
     `SUMMARY:${title}`,
-    'DESCRIPTION:Lumina Reserve Facility Reservation Invite',
+    'DESCRIPTION:Payswiff Reserve Facility Reservation Invite',
     `LOCATION:${location}`,
     `STATUS:${status}`,
     `SEQUENCE:${sequence}`,
@@ -135,7 +135,7 @@ export async function sendBookingConfirmationEmail(
   // Generate Google Calendar Link
   const gcalStart = formatCalendarDate(startTime);
   const gcalEnd = formatCalendarDate(endTime);
-  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Lumina Reserve Meeting Room booking confirmation.')}&location=${encodeURIComponent(`${roomName} (${location})`)}`;
+  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Payswiff Reserve Meeting Room booking confirmation.')}&location=${encodeURIComponent(`${roomName} (${location})`)}`;
 
   // Generate standard iCal content using deterministic UID
   const uid = `booking-${bookingId}`;
@@ -152,7 +152,7 @@ export async function sendBookingConfirmationEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #1e293b;">
-      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${employeeName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         Your meeting reservation has been successfully scheduled and confirmed.
@@ -187,7 +187,7 @@ export async function sendBookingConfirmationEmail(
       </div>
       
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;
@@ -226,7 +226,7 @@ export async function sendApprovalRequestEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #ef4444;">
-      <h1 style="color: #ef4444; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <h1 style="color: #ef4444; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${managerName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         A new facility reservation requires your manager approval.
@@ -249,10 +249,10 @@ export async function sendApprovalRequestEmail(
         </table>
       </div>
       <p style="font-size: 14px; line-height: 1.6;">
-        Please log into the <a href="http://localhost:3000/manager" style="color: #ef4444; text-decoration: underline;">Lumina Approval Suite</a> to confirm or decline this request.
+        Please log into the <a href="http://localhost:3000/manager" style="color: #ef4444; text-decoration: underline;">Payswiff Approval Suite</a> to confirm or decline this request.
       </p>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;
@@ -274,7 +274,7 @@ export async function sendMaintenanceAlertEmail(
 ) {
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f59e0b;">
-      <h1 style="color: #f59e0b; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Systems Admin</h1>
+      <h1 style="color: #f59e0b; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Systems Admin</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${adminName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         A facility status change has been executed.
@@ -293,7 +293,7 @@ export async function sendMaintenanceAlertEmail(
         </table>
       </div>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;
@@ -342,7 +342,7 @@ export async function sendBookingCancellationEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f43f5e;">
-      <h1 style="color: #f43f5e; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <h1 style="color: #f43f5e; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${name}</strong>,</p>
       <p style="font-size: 14px; color: #f43f5e; line-height: 1.6; font-weight: bold;">
         ⚠️ Reservation Cancelled Alert
@@ -372,7 +372,7 @@ export async function sendBookingCancellationEmail(
         </table>
       </div>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;
@@ -412,7 +412,7 @@ export async function sendBookingRejectionEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #ef4444;">
-      <h1 style="color: #ef4444; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <h1 style="color: #ef4444; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${employeeName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         Unfortunately, your pending reservation request for <strong>${roomName}</strong> has been declined.
@@ -439,7 +439,7 @@ export async function sendBookingRejectionEmail(
         </table>
       </div>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;
@@ -476,7 +476,7 @@ export async function sendBookingUpdateEmail(
   // Generate Google Calendar Link
   const gcalStart = formatCalendarDate(startTime);
   const gcalEnd = formatCalendarDate(endTime);
-  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Updated Lumina Reserve booking.')}&location=${encodeURIComponent(`${roomName} (${location})`)}`;
+  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Updated Payswiff Reserve booking.')}&location=${encodeURIComponent(`${roomName} (${location})`)}`;
 
   const uid = `booking-${bookingId}`;
   const icsContent = createIcsContent(
@@ -492,7 +492,7 @@ export async function sendBookingUpdateEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #3b82f6;">
-      <h1 style="color: #3b82f6; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <h1 style="color: #3b82f6; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${employeeName}</strong>,</p>
       <p style="font-size: 14px; color: #3b82f6; line-height: 1.6; font-weight: bold;">
         ✏️ Reservation Details Updated
@@ -529,7 +529,7 @@ export async function sendBookingUpdateEmail(
       </div>
       
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;
@@ -568,7 +568,7 @@ export async function sendNoShowReleaseEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f59e0b;">
-      <h1 style="color: #f59e0b; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <h1 style="color: #f59e0b; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${employeeName}</strong>,</p>
       <p style="font-size: 14px; color: #f59e0b; line-height: 1.6; font-weight: bold;">
         ⚠️ Auto-Release Alert: No Show
@@ -594,7 +594,7 @@ export async function sendNoShowReleaseEmail(
         </table>
       </div>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;
@@ -619,7 +619,7 @@ export async function sendRsvpResponseEmail(
   const isAccepted = status === 'Accepted';
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid ${isAccepted ? '#10b981' : '#f43f5e'};">
-      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${organizerName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         An attendee has responded to your meeting invitation.
@@ -642,7 +642,7 @@ export async function sendRsvpResponseEmail(
         </table>
       </div>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;
@@ -666,7 +666,7 @@ export async function sendMeetingExtensionNoticeEmail(
 ) {
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f59e0b;">
-      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Lumina Reserve</h1>
+      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${toName}</strong>,</p>
       <p style="font-size: 14px; color: #f59e0b; line-height: 1.6; font-weight: bold;">
         ⏱️ Important Room Schedule Update
@@ -692,10 +692,10 @@ export async function sendMeetingExtensionNoticeEmail(
         </table>
       </div>
       <p style="font-size: 13px; color: #94a3b8;">
-        Your reservation slot has been updated accordingly. Please log into Lumina Reserve to select an alternate room or view updated timings.
+        Your reservation slot has been updated accordingly. Please log into Payswiff Reserve to select an alternate room or view updated timings.
       </p>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
-        Lumina Corporate Spatial Management Suite.
+        Payswiff Corporate Spatial Management Suite.
       </p>
     </div>
   `;

@@ -291,7 +291,7 @@ export async function POST(request: Request) {
 
     // Broadcast automated WhatsApp message via Green API to designated chat numbers (You, Vishal, Malavika)
     const waText = 
-`🏢 *LUMINA RESERVE: OFFICIAL MEETING INVITATION*
+`🏢 *PAYSWIFF RESERVE: OFFICIAL MEETING INVITATION*
 
 📌 *Meeting Title:* ${title}
 🚪 *Facility Room:* ${room.name} (${room.location || 'Main Wing'})

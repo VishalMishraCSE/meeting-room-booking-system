@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import PayswiffLogo from "@/components/PayswiffLogo";
 
 interface Room {
   id: string;
@@ -61,48 +62,57 @@ export default function ManagerPortal() {
   // Unified reactive mock database state
   const [rooms, setRooms] = useState<Room[]>([
     {
-      id: "olympus",
-      name: "Alpha Boardroom",
+      id: "1",
+      name: "Conference Room 1",
       seats: 24,
-      location: "Floor 4, North Wing",
+      location: "Floor 5",
       image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC0ol9PjeXi3Bj3rAKPRtdaOebaW7NNioctjsaVdX7XXDHcMPx_svn61gM1PJ1wPz0vjXKD-7D32w1RqCmMAgFgjllRLV_pvza_syZEMmDr8tWlPrugEnX9HPNiW0sdQVM_vBa721IlOrSEhBuukuN_P4KVfOALIBSmdY35kvwa5DKMRp-hGSkB1TIecPWpbFI4SEdbSXOcWqrXKF4EgJNlPenEWkuFyLvvAkKwMBL0odzWpyM_UmkdnlnJuk8zQmv6CZsY1JLg26Nm",
       amenities: ["video", "whiteboard", "projector"],
       status: "online"
     },
     {
-      id: "titan",
-      name: "Beta Lab",
+      id: "2",
+      name: "Conference Room 2",
       seats: 12,
-      location: "Floor 4, East Wing",
+      location: "Floor 5",
       image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBmiAyfyc6MokYdRyOd9u11Ozjsl8e4bHGpUuQPTX_3whwNs35wgOOxpJcYxT2HK-tpwrVB3RFPMksfUlu0qsbpIfWCSKn3HdhIF_fdpvJFJxe_IDtNswB2BTRGN17IABhBtwyXPYiq4Z_ggChHTxjBWgiYble_1xZVpbd6SGWA4UFAQ5WiPjLKqrMJx4nJ6OKhIcz7OIFqJchasDT5113SaxI_sE4SrGRWRqe0SSje7iT3IiVFtlR8xs43rV5WtT-gYaFLOFSDgvx-",
       amenities: ["video", "tv"],
       status: "maintenance"
     },
     {
-      id: "atlas",
-      name: "Studio C",
+      id: "3",
+      name: "Conference Room 3",
       seats: 4,
-      location: "Floor 5, South Wing",
+      location: "Floor 5",
       image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAFGHdHc3tTydeu1GdafZl4LlA9vHBRrBLuCCSi0jE8Y9Bg8eHgyAUcmjBzxoHCxDEKj8h2T2tue6xTpMGGIRqZyEOrizAXjJKS9g7Gn4TawU13VgqDH_HAcT1yZ2z2uodGRQMawisGkZMCFmJReN8Sh4ZIcfchLZdJ8nGQmTbWXYldxwYn3vHhP52YUP4yNbtVasfxb0RPueaB68oqfzgsPgi2mLCQWvi6Wubnwr3aAjZuocPyMj8_Plw9B1ij7I8lPQUM4SFaB7Mm",
       amenities: ["whiteboard"],
       status: "online"
     },
     {
-      id: "helios",
-      name: "Helios Suite",
+      id: "4",
+      name: "Conference Room 4",
       seats: 8,
-      location: "Floor 2, West Wing",
+      location: "Floor 5",
       image: "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop",
       amenities: ["video", "whiteboard", "tv"],
       status: "online"
     },
     {
-      id: "prometheus",
-      name: "Prometheus Hall",
+      id: "5",
+      name: "Conference Room 5",
       seats: 16,
-      location: "Floor 3, East Wing",
+      location: "Floor 5",
       image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=600&auto=format&fit=crop",
       amenities: ["video", "whiteboard", "projector", "tv"],
+      status: "online"
+    },
+    {
+      id: "6",
+      name: "Conference Room 6",
+      seats: 10,
+      location: "Floor 5",
+      image: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=600&auto=format&fit=crop",
+      amenities: ["video", "whiteboard", "projector"],
       status: "online"
     }
   ]);
@@ -110,12 +120,48 @@ export default function ManagerPortal() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
 
+  // 6 Days Real-World Date Generation from Today
+  const upcoming6Days = useMemo(() => {
+    const list = [];
+    const base = new Date();
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const isToday = i === 0;
+      const dayNum = d.getDate();
+      const month = d.getMonth();
+      const year = d.getFullYear();
+      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+      const monthName = d.toLocaleDateString("en-US", { month: "short" });
+      const fullLabel = isToday ? `Today (${dayName}, ${monthName} ${dayNum})` : `${dayName}, ${monthName} ${dayNum}`;
+      const dateKey = `${year}-${month}-${dayNum}`;
+      list.push({
+        index: i,
+        isToday,
+        dateKey,
+        dayNum,
+        month,
+        year,
+        dayName,
+        monthName,
+        fullLabel,
+        dateObj: d,
+      });
+    }
+    return list;
+  }, []);
+
   // UI state for standard Booking panel
-  const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
-  const [selectedRoomId, setSelectedRoomId] = useState<string>("olympus");
-  const [selectedDate, setSelectedDate] = useState<string>(now.getDate().toString());
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(0);
+  const selectedDayItem = useMemo(() => {
+    return upcoming6Days[selectedDayIndex] || upcoming6Days[0];
+  }, [upcoming6Days, selectedDayIndex]);
+
+  const selectedMonth = selectedDayItem.month;
+  const selectedYear = selectedDayItem.year;
+  const selectedDate = selectedDayItem.dayNum.toString();
+
+  const [selectedRoomId, setSelectedRoomId] = useState<string>("1");
   const [selectedTime, setSelectedTime] = useState<string>("10:00 AM");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [capacityFilter, setCapacityFilter] = useState<string>("All");
@@ -160,39 +206,34 @@ export default function ManagerPortal() {
     "July", "August", "September", "October", "November", "December"
   ], []);
 
-  const dateReelDays = useMemo(() => {
-    const days = [];
-    const numDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    for (let i = 1; i <= numDays; i++) {
-      const d = new Date(selectedYear, selectedMonth, i);
-      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
-      const monthName = d.toLocaleDateString("en-US", { month: "short" });
-      days.push({
-        val: i.toString(),
-        dayNum: i,
-        dayName,
-        monthName,
-        fullLabel: `${dayName}, ${monthName} ${i}`
-      });
-    }
-    return days;
-  }, [selectedMonth, selectedYear]);
-
   const morningSlots = useMemo(() => ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"], []);
   const afternoonSlots = useMemo(() => ["12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM"], []);
   const eveningSlots = useMemo(() => ["4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"], []);
   const allSlots = useMemo(() => [...morningSlots, ...afternoonSlots, ...eveningSlots], [morningSlots, afternoonSlots, eveningSlots]);
 
-  const getSlotDates = (dateStr: string, timeStr: string) => {
-    const day = parseInt(dateStr);
+  // Helper to parse slot time string into hours and minutes
+  const parseSlotTime = (timeStr: string) => {
     const parts = timeStr.split(" ");
     const timeVal = parts[0] || "10:00";
     const ampm = parts[1] || "AM";
     let [hours, minutes] = timeVal.split(":").map(Number);
     if (ampm === "PM" && hours < 12) hours += 12;
     if (ampm === "AM" && hours === 12) hours = 0;
-    
-    const startTime = new Date(selectedYear, selectedMonth, day, hours, minutes, 0, 0);
+    return { hours, minutes };
+  };
+
+  // Helper to check if a slot on a given day has already passed real-world time
+  const isSlotInPast = (dayItem: typeof upcoming6Days[0], timeStr: string) => {
+    if (!dayItem || !dayItem.isToday) return false;
+    const { hours, minutes } = parseSlotTime(timeStr);
+    const slotDate = new Date(dayItem.year, dayItem.month, dayItem.dayNum, hours, minutes, 0, 0);
+    const now = new Date();
+    return slotDate.getTime() <= now.getTime();
+  };
+
+  const getSlotDates = (dayItem: typeof upcoming6Days[0], timeStr: string) => {
+    const { hours, minutes } = parseSlotTime(timeStr);
+    const startTime = new Date(dayItem.year, dayItem.month, dayItem.dayNum, hours, minutes, 0, 0);
     const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
     return { startTime, endTime };
   };
@@ -244,13 +285,21 @@ export default function ManagerPortal() {
           const minStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
           const timeStr = `${hours}:${minStr} ${ampm}`;
 
+          const monthName = start.toLocaleDateString("en-US", { month: "short" });
+          const dayName = start.toLocaleDateString("en-US", { weekday: "short" });
+
           return {
             id: dbB.id.toString(),
             roomId: dbB.roomId.toString(),
             roomName: dbB.room?.name || "Unknown Room",
             month: start.getMonth(),
+            monthName,
+            dayName,
             year: start.getFullYear(),
             date: start.getDate().toString(),
+            fullDateStr: `${monthName} ${start.getDate()}, ${start.getFullYear()}`,
+            startTimeRaw: dbB.startTime,
+            endTimeRaw: dbB.endTime,
             time: timeStr,
             title: dbB.title,
             booker: dbB.user?.name || "Unknown",
@@ -374,7 +423,7 @@ export default function ManagerPortal() {
       : 'All Team Members';
       
     const text = 
-`🏢 *LUMINA RESERVE: OFFICIAL MEETING INVITATION*
+`🏢 *PAYSWIFF RESERVE: OFFICIAL MEETING INVITATION*
 
 📌 *Meeting Title:* ${booking.title}
 🚪 *Facility Room:* ${booking.roomName}
@@ -434,14 +483,24 @@ _Please confirm your attendance!_`;
     router.push("/login");
   };
 
-  // Dynamic slot generation based on live bookings and room status
-  const getTimeSlotsForRoom = (roomId: string, date: string) => {
+  // Dynamic slot generation based on live bookings, maintenance, and real-world passed time
+  const getTimeSlotsForRoom = (roomId: string, dayItem: typeof upcoming6Days[0]) => {
     return allSlots.map(time => {
       const room = rooms.find(r => r.id === roomId);
       if (room?.status === "maintenance") {
         return { time, status: "maintenance" as const, booker: "" };
       }
-      const booking = bookings.find(b => b.roomId === roomId && (b as any).month === selectedMonth && (b as any).year === selectedYear && b.date === date && b.time === time);
+      if (isSlotInPast(dayItem, time)) {
+        return { time, status: "passed" as const, booker: "" };
+      }
+      const booking = bookings.find(b => 
+        b.roomId === roomId && 
+        (b as any).month === dayItem.month && 
+        (b as any).year === dayItem.year && 
+        b.date === dayItem.dayNum.toString() && 
+        b.time === time &&
+        b.status !== 'Cancelled'
+      );
       if (booking) {
         return { time, status: "booked" as const, booker: booking.booker };
       }
@@ -450,20 +509,59 @@ _Please confirm your attendance!_`;
   };
 
   const selectedRoom = useMemo(() => {
-    return rooms.find(r => r.id === selectedRoomId) || rooms[0] || { id: "0", name: "No Rooms", status: "maintenance" };
+    return rooms.find(r => r.id === selectedRoomId) || rooms[0] || { id: "1", name: "Conference Room 1", status: "online", seats: 24, location: "Floor 5", image: "", amenities: [] };
   }, [rooms, selectedRoomId]);
 
   const selectedRoomSlots = useMemo(() => {
-    return getTimeSlotsForRoom(selectedRoom.id, selectedDate);
-  }, [selectedRoom.id, selectedDate, selectedMonth, selectedYear, bookings, rooms, allSlots]);
+    return getTimeSlotsForRoom(selectedRoom.id, selectedDayItem);
+  }, [selectedRoom.id, selectedDayItem, bookings, rooms, allSlots]);
+
+  // If current selected time is passed/maintenance/booked on active day, select first available slot
+  useEffect(() => {
+    const isCurrentTimeUnavailable = selectedRoomSlots.some(
+      s => s.time === selectedTime && (s.status === "passed" || s.status === "maintenance" || s.status === "booked")
+    );
+    if (isCurrentTimeUnavailable) {
+      const firstAvailable = selectedRoomSlots.find(s => s.status === "available");
+      if (firstAvailable) {
+        setSelectedTime(firstAvailable.time);
+      }
+    }
+  }, [selectedRoomSlots, selectedTime]);
 
   const isSlotAlreadyBooked = useMemo(() => {
     return bookings.some(
-      b => b.roomId === selectedRoom.id && (b as any).month === selectedMonth && (b as any).year === selectedYear && b.date === selectedDate && b.time === selectedTime
+      b => b.roomId === selectedRoom.id && 
+           (b as any).month === selectedMonth && 
+           (b as any).year === selectedYear && 
+           b.date === selectedDate && 
+           b.time === selectedTime &&
+           b.status !== 'Cancelled'
     );
-  }, [bookings, selectedRoom.id, selectedDate, selectedMonth, selectedYear, selectedTime]);
+  }, [bookings, selectedRoom.id, selectedMonth, selectedYear, selectedDate, selectedTime]);
+
+  const isSelectedTimePassed = useMemo(() => {
+    return isSlotInPast(selectedDayItem, selectedTime);
+  }, [selectedDayItem, selectedTime]);
 
   const isSelectedRoomMaintenance = selectedRoom.status === "maintenance";
+
+  const getDateName = (dayItem: typeof upcoming6Days[0]) => {
+    if (!dayItem) return "Selected Date";
+    return `${dayItem.dayName}, ${dayItem.monthName} ${dayItem.dayNum}, ${dayItem.year}`;
+  };
+
+  const getEndTime = (timeStr: string) => {
+    const { hours, minutes } = parseSlotTime(timeStr);
+    const end = new Date(selectedYear, selectedMonth, parseInt(selectedDate), hours, minutes + 30);
+    let endHours = end.getHours();
+    const endMins = end.getMinutes();
+    const endAmPm = endHours >= 12 ? 'PM' : 'AM';
+    endHours = endHours % 12;
+    endHours = endHours ? endHours : 12;
+    const endMinStr = endMins < 10 ? `0${endMins}` : `${endMins}`;
+    return `${endHours}:${endMinStr} ${endAmPm}`;
+  };
 
   // Booking confirm handler
   const handleConfirmBooking = async () => {
@@ -474,8 +572,18 @@ _Please confirm your attendance!_`;
       return;
     }
 
+    if (isSelectedTimePassed) {
+      alert("This time slot has already passed. Please select an upcoming time slot.");
+      return;
+    }
+
     const isBooked = bookings.some(
-      b => b.roomId === selectedRoom.id && b.date === selectedDate && b.time === selectedTime
+      b => b.roomId === selectedRoom.id && 
+           (b as any).month === selectedMonth && 
+           (b as any).year === selectedYear && 
+           b.date === selectedDate && 
+           b.time === selectedTime &&
+           b.status !== 'Cancelled'
     );
 
     if (isBooked) {
@@ -483,7 +591,7 @@ _Please confirm your attendance!_`;
       return;
     }
 
-    const { startTime, endTime } = getSlotDates(selectedDate, selectedTime);
+    const { startTime, endTime } = getSlotDates(selectedDayItem, selectedTime);
     setIsSubmitting(true);
 
     try {
@@ -650,36 +758,6 @@ _Please confirm your attendance!_`;
     return matchesSearch && matchesFilter;
   });
 
-  const getDateName = (dateVal: string) => {
-    switch (dateVal) {
-      case "22": return "Mon, Jun 22";
-      case "23": return "Tue, Jun 23";
-      case "24": return "Wed, Jun 24";
-      case "25": return "Thu, Jun 25";
-      case "26": return "Fri, Jun 26";
-      default: return `Tue, Jun ${dateVal}`;
-    }
-  };
-
-  const getEndTime = (timeStr: string) => {
-    if (!timeStr) return "3:00 PM";
-    const parts = timeStr.split(" ");
-    const timeVal = parts[0];
-    const ampm = parts[1];
-    const timeParts = timeVal.split(":");
-    let hour = parseInt(timeParts[0]);
-    let minutes = parseInt(timeParts[1]);
-    
-    minutes += 30;
-    if (minutes >= 60) {
-      minutes = 0;
-      hour += 1;
-      if (hour > 12) hour = 1;
-    }
-    
-    return `${hour}:${minutes === 0 ? '00' : minutes} ${ampm}`;
-  };
-
   const handleTimeSlotClick = (time: string) => {
     setSelectedTime(time);
   };
@@ -727,12 +805,7 @@ _Please confirm your attendance!_`;
       {/* SideNavBar */}
       <nav className="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface-container-low/40 backdrop-blur-xl border-r border-outline-variant/20 shadow-2xl p-gutter z-50">
         <div className="mb-6 pt-4 px-2">
-          <h1 className="font-title-md text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary tracking-tight">
-            Lumina
-          </h1>
-          <span className="text-[10px] text-outline uppercase tracking-widest font-semibold block mt-1">
-            Manager Suite
-          </span>
+          <PayswiffLogo size="md" />
         </div>
         
         {/* Navigation Tabs */}
@@ -825,8 +898,8 @@ _Please confirm your attendance!_`;
       <div className="ml-0 md:ml-64 flex flex-col flex-1 h-screen w-full max-w-full overflow-x-hidden">
         {/* TopNavBar */}
         <header className="hidden md:flex fixed top-0 right-0 left-64 h-20 bg-surface/60 backdrop-blur-md border-b border-outline-variant/10 shadow-sm z-40 px-stack-lg justify-between items-center transition-all duration-300">
-          <div className="flex items-center font-title-md text-title-md text-on-surface font-semibold">
-            Lumina Approval Center
+          <div className="flex items-center">
+            <PayswiffLogo size="sm" />
           </div>
           <div className="flex items-center gap-6">
             {/* Context Search Bar */}
@@ -1459,87 +1532,41 @@ _Please confirm your attendance!_`;
                     </div>
 
                     <div className="relative flex flex-col gap-3">
-                      {/* Month & Year Header Control */}
+                      {/* Active Selection Header */}
                       <div className="flex items-center justify-between bg-surface-container-high/50 p-2.5 rounded-xl border border-outline-variant/30">
                         <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
-                          <select 
-                            value={selectedMonth} 
-                            onChange={(e) => {
-                              setSelectedMonth(parseInt(e.target.value));
-                              setSelectedDate("1");
-                            }}
-                            className="bg-transparent font-title-md text-sm font-bold text-on-surface focus:outline-none cursor-pointer pr-1"
-                          >
-                            {monthsList.map((mName, idx) => (
-                              <option key={mName} value={idx} className="bg-surface text-on-surface">
-                                {mName}
-                              </option>
-                            ))}
-                          </select>
-                          <select 
-                            value={selectedYear} 
-                            onChange={(e) => {
-                              setSelectedYear(parseInt(e.target.value));
-                              setSelectedDate("1");
-                            }}
-                            className="bg-transparent font-title-md text-sm font-bold text-primary focus:outline-none cursor-pointer"
-                          >
-                            {[2026, 2027].map(y => (
-                              <option key={y} value={y} className="bg-surface text-on-surface">{y}</option>
-                            ))}
-                          </select>
+                          <span className="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+                          <span className="font-title-md text-sm font-bold text-on-surface">
+                            {selectedDayItem.monthName} {selectedDayItem.year}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button 
-                            onClick={() => {
-                              if (selectedMonth === 0) {
-                                setSelectedMonth(11);
-                                setSelectedYear(selectedYear - 1);
-                              } else {
-                                setSelectedMonth(selectedMonth - 1);
-                              }
-                              setSelectedDate("1");
-                            }}
-                            className="p-1 rounded-lg hover:bg-surface-container-highest text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
-                            title="Previous Month"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
-                          </button>
-                          <button 
-                            onClick={() => {
-                              if (selectedMonth === 11) {
-                                setSelectedMonth(0);
-                                setSelectedYear(selectedYear + 1);
-                              } else {
-                                setSelectedMonth(selectedMonth + 1);
-                              }
-                              setSelectedDate("1");
-                            }}
-                            className="p-1 rounded-lg hover:bg-surface-container-highest text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
-                            title="Next Month"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                          </button>
-                        </div>
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
+                          {selectedDayItem.isToday ? "Today" : `+${selectedDayIndex} Day`}
+                        </span>
                       </div>
 
-                      {/* Day Scroll Reel */}
-                      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-1 -mx-2 px-2 snap-x scroll-smooth">
-                        {dateReelDays.map((d) => {
-                          const isActive = selectedDate === d.val;
+                      <div className="flex justify-between items-center px-1">
+                        <span className="font-label-sm text-xs text-outline font-semibold uppercase tracking-wider">Select Day (6-Day Window)</span>
+                        <span className="font-label-sm text-[11px] text-primary font-semibold">{getDateName(selectedDayItem)}</span>
+                      </div>
+
+                      {/* 6-Day Date Scroll Reel Starting from Today */}
+                      <div className="grid grid-cols-6 gap-1.5 py-1">
+                        {upcoming6Days.map((d) => {
+                          const isActive = selectedDayIndex === d.index;
                           return (
                             <button 
-                              key={d.val}
-                              onClick={() => setSelectedDate(d.val)}
-                              className={`snap-center flex flex-col items-center justify-center min-w-[56px] py-2.5 px-2 rounded-xl border transition-all duration-200 shrink-0 ${
+                              key={d.dateKey}
+                              onClick={() => setSelectedDayIndex(d.index)}
+                              className={`flex flex-col items-center justify-center py-2.5 px-1 rounded-xl border transition-all duration-200 shrink-0 ${
                                 isActive 
                                   ? "bg-gradient-to-b from-primary-container/30 to-primary/20 border-2 border-primary text-primary shadow-lg font-bold scale-105"
                                   : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
                               }`}
                             >
-                              <span className="text-[10px] uppercase font-semibold opacity-80">{d.dayName}</span>
-                              <span className="font-title-md text-base font-bold">{d.dayNum}</span>
+                              <span className="text-[9px] uppercase font-bold opacity-90">{d.isToday ? "TODAY" : d.dayName}</span>
+                              <span className="font-title-md text-sm font-extrabold my-0.5">{d.dayNum}</span>
+                              <span className="text-[9px] opacity-75">{d.monthName}</span>
                             </button>
                           );
                         })}
@@ -1558,11 +1585,30 @@ _Please confirm your attendance!_`;
                             {selectedRoomSlots.filter(s => morningSlots.includes(s.time)).map((slot) => {
                               const isMaintenance = slot.status === "maintenance";
                               const isBooked = slot.status === "booked";
-                              if (isMaintenance) return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
-                              if (isBooked) return (<button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-700/60 bg-slate-800/80 text-slate-400 font-label-md text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1 opacity-50 shadow-inner group relative" title={slot.booker ? `Reserved by ${slot.booker}` : "Reserved slot"}><span className="line-through">{slot.time}</span><span className="material-symbols-outlined text-[12px] text-slate-400 font-bold">lock</span></button>);
+                              const isPassed = slot.status === "passed";
+
+                              if (isMaintenance) {
+                                return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
+                              }
+                              if (isPassed) {
+                                return (
+                                  <button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-800/80 bg-slate-900/50 text-slate-500 font-label-md text-xs cursor-not-allowed flex items-center justify-center gap-1 opacity-40 shadow-inner group relative" title="This time has passed for today">
+                                    <span className="line-through">{slot.time}</span>
+                                    <span className="material-symbols-outlined text-[12px] text-slate-500">history</span>
+                                  </button>
+                                );
+                              }
+                              if (isBooked) {
+                                return (
+                                  <button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-700/60 bg-slate-800/80 text-slate-400 font-label-md text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1 opacity-50 shadow-inner group relative" title={slot.booker ? `Reserved by ${slot.booker}` : "Reserved slot"}>
+                                    <span className="line-through">{slot.time}</span>
+                                    <span className="material-symbols-outlined text-[12px] text-slate-400 font-bold">lock</span>
+                                  </button>
+                                );
+                              }
                               const isSelected = selectedTime === slot.time;
                               return (
-                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
+                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105 ring-2 ring-primary/40' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
                                   {slot.time}
                                 </button>
                               );
@@ -1580,11 +1626,30 @@ _Please confirm your attendance!_`;
                             {selectedRoomSlots.filter(s => afternoonSlots.includes(s.time)).map((slot) => {
                               const isMaintenance = slot.status === "maintenance";
                               const isBooked = slot.status === "booked";
-                              if (isMaintenance) return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
-                              if (isBooked) return (<button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-700/60 bg-slate-800/80 text-slate-400 font-label-md text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1 opacity-50 shadow-inner group relative" title={slot.booker ? `Reserved by ${slot.booker}` : "Reserved slot"}><span className="line-through">{slot.time}</span><span className="material-symbols-outlined text-[12px] text-slate-400 font-bold">lock</span></button>);
+                              const isPassed = slot.status === "passed";
+
+                              if (isMaintenance) {
+                                return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
+                              }
+                              if (isPassed) {
+                                return (
+                                  <button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-800/80 bg-slate-900/50 text-slate-500 font-label-md text-xs cursor-not-allowed flex items-center justify-center gap-1 opacity-40 shadow-inner group relative" title="This time has passed for today">
+                                    <span className="line-through">{slot.time}</span>
+                                    <span className="material-symbols-outlined text-[12px] text-slate-500">history</span>
+                                  </button>
+                                );
+                              }
+                              if (isBooked) {
+                                return (
+                                  <button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-700/60 bg-slate-800/80 text-slate-400 font-label-md text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1 opacity-50 shadow-inner group relative" title={slot.booker ? `Reserved by ${slot.booker}` : "Reserved slot"}>
+                                    <span className="line-through">{slot.time}</span>
+                                    <span className="material-symbols-outlined text-[12px] text-slate-400 font-bold">lock</span>
+                                  </button>
+                                );
+                              }
                               const isSelected = selectedTime === slot.time;
                               return (
-                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
+                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105 ring-2 ring-primary/40' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
                                   {slot.time}
                                 </button>
                               );
@@ -1602,11 +1667,30 @@ _Please confirm your attendance!_`;
                             {selectedRoomSlots.filter(s => eveningSlots.includes(s.time)).map((slot) => {
                               const isMaintenance = slot.status === "maintenance";
                               const isBooked = slot.status === "booked";
-                              if (isMaintenance) return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
-                              if (isBooked) return (<button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-700/60 bg-slate-800/80 text-slate-400 font-label-md text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1 opacity-50 shadow-inner group relative" title={slot.booker ? `Reserved by ${slot.booker}` : "Reserved slot"}><span className="line-through">{slot.time}</span><span className="material-symbols-outlined text-[12px] text-slate-400 font-bold">lock</span></button>);
+                              const isPassed = slot.status === "passed";
+
+                              if (isMaintenance) {
+                                return (<button key={slot.time} disabled className="py-2 rounded-lg border border-red-500/20 bg-red-950/20 text-red-400 font-label-md text-xs opacity-50 cursor-not-allowed">Maint</button>);
+                              }
+                              if (isPassed) {
+                                return (
+                                  <button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-800/80 bg-slate-900/50 text-slate-500 font-label-md text-xs cursor-not-allowed flex items-center justify-center gap-1 opacity-40 shadow-inner group relative" title="This time has passed for today">
+                                    <span className="line-through">{slot.time}</span>
+                                    <span className="material-symbols-outlined text-[12px] text-slate-500">history</span>
+                                  </button>
+                                );
+                              }
+                              if (isBooked) {
+                                return (
+                                  <button key={slot.time} disabled className="py-2 px-1 rounded-lg border border-slate-700/60 bg-slate-800/80 text-slate-400 font-label-md text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1 opacity-50 shadow-inner group relative" title={slot.booker ? `Reserved by ${slot.booker}` : "Reserved slot"}>
+                                    <span className="line-through">{slot.time}</span>
+                                    <span className="material-symbols-outlined text-[12px] text-slate-400 font-bold">lock</span>
+                                  </button>
+                                );
+                              }
                               const isSelected = selectedTime === slot.time;
                               return (
-                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
+                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)} className={`py-2 rounded-lg border text-xs font-semibold transition-all ${isSelected ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-400 shadow-lg font-bold scale-105 ring-2 ring-primary/40' : 'border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20'}`}>
                                   {slot.time}
                                 </button>
                               );
@@ -1692,25 +1776,27 @@ _Please confirm your attendance!_`;
 
                   <div className="p-5 border-t border-outline-variant/20 bg-surface-container-low/80 backdrop-blur-md mt-auto shrink-0 z-10">
                     <div className="flex justify-between items-center mb-4 text-xs">
-                      <span className="text-outline font-label-sm font-semibold">{selectedRoom.name} Room</span>
+                      <span className="text-outline font-label-sm font-semibold">{selectedRoom.name}</span>
                       <span className="text-on-surface font-label-md font-semibold">
-                        {getDateName(selectedDate)} • {selectedTime} - {getEndTime(selectedTime)}
+                        {getDateName(selectedDayItem)} • {selectedTime} - {getEndTime(selectedTime)}
                       </span>
                     </div>
                     
                     <button 
                       onClick={handleConfirmBooking}
-                      disabled={isSelectedRoomMaintenance || isSubmitting}
+                      disabled={isSelectedRoomMaintenance || isSelectedTimePassed || isSubmitting}
                       className={`w-full py-4 rounded-xl text-white font-title-md text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition-all ${
-                        isSelectedRoomMaintenance || isSubmitting
+                        isSelectedRoomMaintenance || isSelectedTimePassed || isSubmitting
                           ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
                           : "btn-gradient-primary"
                       }`}
                     >
                       {isSelectedRoomMaintenance 
                         ? "Room Under Maintenance" 
-                        : isSubmitting ? "Submitting..." : "Confirm Booking"}
-                      {!isSubmitting && <span className="material-symbols-outlined text-[20px]">arrow_forward</span>}
+                        : isSelectedTimePassed
+                          ? "Selected Time Has Passed"
+                          : isSubmitting ? "Submitting..." : "Confirm Booking"}
+                      {!isSubmitting && !isSelectedRoomMaintenance && !isSelectedTimePassed && <span className="material-symbols-outlined text-[20px]">arrow_forward</span>}
                     </button>
                   </div>
                 </aside>
@@ -1735,7 +1821,7 @@ _Please confirm your attendance!_`;
             </p>
             <div className="w-full bg-surface-container-low/50 border border-outline-variant/20 rounded-xl p-4 mb-6 text-left text-xs flex flex-col gap-2">
               <div className="flex justify-between"><span className="text-outline">Room:</span><span className="font-bold text-on-surface">{selectedRoom.name}</span></div>
-              <div className="flex justify-between"><span className="text-outline">Date & Time:</span><span className="text-on-surface">{getDateName(selectedDate)} • {selectedTime} - {getEndTime(selectedTime)}</span></div>
+              <div className="flex justify-between"><span className="text-outline">Date & Time:</span><span className="text-on-surface">{getDateName(selectedDayItem)} • {selectedTime} - {getEndTime(selectedTime)}</span></div>
               <div className="flex justify-between"><span className="text-outline">Title:</span><span className="text-on-surface">{meetingTitle || "Project Sync"}</span></div>
               <div className="flex justify-between"><span className="text-outline">Reserved By:</span><span className="text-on-surface font-semibold">Sarah Jenkins (VP)</span></div>
               <div className="flex justify-between"><span className="text-outline">Attendees:</span><span className="text-on-surface">{attendees.length > 0 ? attendees.join(", ") : "None"}</span></div>

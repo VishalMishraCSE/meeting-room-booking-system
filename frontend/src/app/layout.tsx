@@ -13,8 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Premium Room Booking Dashboard | Lumina",
-  description: "Enterprise Room Reservation Dashboard",
+  title: "Payswiff Reserve | Corporate Spatial Management",
+  description: "Enterprise Room Reservation & Spatial Intelligence Platform",
+  icons: {
+    icon: "/Payswiff-Logo.svg",
+    shortcut: "/Payswiff-Logo.svg",
+    apple: "/Payswiff-Logo.svg",
+  },
 };
 
 export default function RootLayout({
@@ -28,7 +33,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet"/>
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
