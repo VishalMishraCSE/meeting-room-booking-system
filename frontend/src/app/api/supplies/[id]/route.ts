@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 
-async function checkManagerOrAdminAccess() {
+async function checkAdminOnlyAccess() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('userSession');
   if (!sessionCookie || !sessionCookie.value) {
@@ -12,8 +12,8 @@ async function checkManagerOrAdminAccess() {
   try {
     const session = JSON.parse(sessionCookie.value);
     const role = (session.role || '').toLowerCase();
-    if (role !== 'manager' && role !== 'admin') {
-      return { authorized: false, error: 'Forbidden: Access restricted to Manager and Admin roles only' };
+    if (role !== 'admin') {
+      return { authorized: false, error: 'Forbidden: Only System Admins have authority to procure, restock, or delete room supplies' };
     }
     return { authorized: true, user: session };
   } catch (err) {
@@ -25,7 +25,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const access = await checkManagerOrAdminAccess();
+  const access = await checkAdminOnlyAccess();
   if (!access.authorized) {
     return NextResponse.json({ error: access.error }, { status: 403 });
   }
@@ -75,7 +75,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const access = await checkManagerOrAdminAccess();
+  const access = await checkAdminOnlyAccess();
   if (!access.authorized) {
     return NextResponse.json({ error: access.error }, { status: 403 });
   }

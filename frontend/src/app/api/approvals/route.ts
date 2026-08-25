@@ -23,20 +23,29 @@ async function getSessionUser() {
   }
 }
 
-// 1. GET: Fetch all pending room bookings
+// 1. GET: Fetch pending room bookings (scoped by team for Managers; global for Admins)
 export async function GET() {
   try {
     const user = await getSessionUser();
     if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
-      return NextResponse.json({ error: 'Access denied: Manager permissions required' }, { status: 403 });
+      return NextResponse.json({ error: 'Access denied: Manager or Admin permissions required' }, { status: 403 });
+    }
+
+    // Admins see all pending bookings; Managers see ONLY bookings from their assigned team members (or their own)
+    const whereClause: any = { status: 'Pending' };
+    if (user.role === 'manager') {
+      whereClause.OR = [
+        { user: { managerId: user.id } },
+        { userId: user.id },
+      ];
     }
 
     const pendingRequests = await prisma.booking.findMany({
-      where: { status: 'Pending' },
+      where: whereClause,
       include: {
         room: true,
         user: {
-          select: { id: true, name: true, email: true, role: true }
+          select: { id: true, name: true, email: true, role: true, managerId: true }
         },
         attendees: true,
       },
@@ -87,6 +96,18 @@ export async function POST(request: Request) {
 
     if (!booking) {
       return NextResponse.json({ error: 'Booking request not found' }, { status: 404 });
+    }
+
+    // Step 1b: Verify Manager Authority — Managers can ONLY approve/reject requests from their own team members
+    if (user.role === 'manager') {
+      const isTeamMember = booking.user.managerId === user.id;
+      const isSelf = booking.userId === user.id;
+      if (!isTeamMember && !isSelf) {
+        return NextResponse.json(
+          { error: 'Forbidden: You only have authority to approve or reject bookings submitted by your assigned team members.' },
+          { status: 403 }
+        );
+      }
     }
 
     if (booking.status !== 'Pending') {

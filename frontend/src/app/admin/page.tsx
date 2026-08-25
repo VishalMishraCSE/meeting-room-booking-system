@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import PayswiffLogo from "@/components/PayswiffLogo";
+import MeetingFeedbackModal from "@/components/MeetingFeedbackModal";
+import FlashScreen from "@/components/FlashScreen";
+import StarRating2D from "@/components/StarRating2D";
 
 interface Room {
   id: string;
@@ -16,15 +19,28 @@ interface Room {
 
 interface Booking {
   id: string;
+  userId?: string;
   roomId: string;
   roomName: string;
+  month?: number;
+  monthName?: string;
+  dayName?: string;
+  year?: number;
   date: string;
+  fullDateStr?: string;
+  startTimeRaw?: string;
+  endTimeRaw?: string;
   time: string;
   title: string;
   booker: string;
+  bookerEmail?: string;
+  bookerRole?: string;
   attendees: string[];
   status: string;
   checkedIn?: boolean;
+  pendingExtensionMinutes?: number;
+  extensionReason?: string;
+  extensionStatus?: string;
 }
 
 interface AuditLog {
@@ -52,8 +68,61 @@ interface RoomSupply {
 export default function AdminPortal() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [userId, setUserId] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("Admin.01");
-  const [currentView, setCurrentView] = useState<string>("dashboard"); // "dashboard" | "rooms" | "audit"
+  const [currentView, setCurrentView] = useState<string>("dashboard"); // "dashboard" | "rooms" | "audit" | "active_reservations"
+
+  // Post-meeting 5-star feedback state
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState<boolean>(false);
+  const [targetFeedbackBooking, setTargetFeedbackBooking] = useState<any>(null);
+
+  // Admin feedback panel state
+  const [allFeedbacks, setAllFeedbacks] = useState<any[]>([]);
+  const [feedbackRatingFilter, setFeedbackRatingFilter] = useState<number | null>(null);
+  const [feedbackSearchQuery, setFeedbackSearchQuery] = useState<string>('');
+
+  // Approval action in-flight state
+  const [isProcessingApproval, setIsProcessingApproval] = useState<string | null>(null);
+
+  // Handlers for Admin Approvals & Extensions
+  const handleAdminApprovalAction = async (bookingId: string, action: "Approved" | "Rejected") => {
+    setIsProcessingApproval(bookingId);
+    try {
+      const res = await fetch("/api/approvals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, action: action === "Approved" ? "Approve" : "Reject" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Failed to ${action.toLowerCase()} reservation`);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsProcessingApproval(null);
+    }
+  };
+
+  const handleAdminExtensionDecision = async (bookingId: string, action: "Approve" | "Reject") => {
+    setIsProcessingApproval(`ext-${bookingId}`);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/extend`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Failed to ${action.toLowerCase()} extension`);
+      alert(data.message || `Extension ${action.toLowerCase()}d successfully`);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsProcessingApproval(null);
+    }
+  };
 
   // Unified reactive mock database state
   const [rooms, setRooms] = useState<Room[]>([
@@ -116,13 +185,19 @@ export default function AdminPortal() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
-  // 6 Days Real-World Date Generation from Today
+  // Real-World Date Generation from Today to End of Current Month
   const upcoming6Days = useMemo(() => {
     const list = [];
     const base = new Date();
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
+    const currentYear = base.getFullYear();
+    const currentMonth = base.getMonth();
+    const todayDate = base.getDate();
+    // Calculate total days remaining in the current month starting from today
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const totalDaysRemaining = lastDayOfMonth - todayDate + 1;
+
+    for (let i = 0; i < totalDaysRemaining; i++) {
+      const d = new Date(currentYear, currentMonth, todayDate + i);
       const isToday = i === 0;
       const dayNum = d.getDate();
       const month = d.getMonth();
@@ -211,7 +286,6 @@ export default function AdminPortal() {
   // Audit Trail & Bookings Filter State
   const [auditBookingFilter, setAuditBookingFilter] = useState<"all" | "approved" | "pending" | "cancelled" | "logs">("all");
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>("");
-  const [isProcessingApproval, setIsProcessingApproval] = useState<string | null>(null);
 
   // Edit Members State
   const [isEditMembersModalOpen, setIsEditMembersModalOpen] = useState<boolean>(false);
@@ -223,24 +297,6 @@ export default function AdminPortal() {
   const [isRoomHistoryModalOpen, setIsRoomHistoryModalOpen] = useState<boolean>(false);
   const [targetRoomHistory, setTargetRoomHistory] = useState<Room | null>(null);
 
-  const handleAdminApprovalAction = async (bookingId: string, action: "Approved" | "Rejected") => {
-    setIsProcessingApproval(bookingId);
-    try {
-      const res = await fetch("/api/approvals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId, action }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Failed to ${action.toLowerCase()} request`);
-      await fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setIsProcessingApproval(null);
-    }
-  };
-
   // Helper for Rich Automated WhatsApp Share link
   const getWhatsAppShareLink = (booking: any) => {
     const attendeesStr = booking.attendees && booking.attendees.length > 0 
@@ -248,7 +304,7 @@ export default function AdminPortal() {
       : 'All Team Members';
       
     const text = 
-`🏢 *PAYSWIFF RESERVE: OFFICIAL MEETING INVITATION*
+`🏢 *PAYSWIFF MEETING ROOM: OFFICIAL MEETING INVITATION*
 
 📌 *Meeting Title:* ${booking.title}
 🚪 *Facility Room:* ${booking.roomName}
@@ -366,6 +422,7 @@ _Please confirm your attendance!_`;
 
           return {
             id: dbB.id.toString(),
+            userId: dbB.userId?.toString() || (dbB.user?.id ? dbB.user.id.toString() : ""),
             roomId: dbB.roomId.toString(),
             roomName: dbB.room?.name || "Unknown Room",
             month: start.getMonth(),
@@ -382,7 +439,10 @@ _Please confirm your attendance!_`;
             bookerEmail: dbB.user?.email || "",
             bookerRole: dbB.user?.role || "Employee",
             attendees: dbB.attendees?.map((a: any) => a.email) || [],
-            status: dbB.status || "Approved"
+            status: dbB.status || "Approved",
+            pendingExtensionMinutes: dbB.pendingExtensionMinutes,
+            extensionReason: dbB.extensionReason,
+            extensionStatus: dbB.extensionStatus
           };
         });
         setBookings(mappedBookings);
@@ -409,6 +469,11 @@ _Please confirm your attendance!_`;
       fetch("/api/supplies").then(res => res.json()).then(data => {
         if (Array.isArray(data)) setSupplies(data);
       }).catch(e => console.error("Failed to fetch room supplies:", e));
+
+      // Fetch all user feedbacks for admin panel
+      fetch("/api/feedback?all=true").then(res => res.json()).then(data => {
+        if (data && Array.isArray(data.feedbacks)) setAllFeedbacks(data.feedbacks);
+      }).catch(e => console.error("Failed to fetch all feedbacks:", e));
     } catch (err) {
       console.error("Failed to fetch admin data:", err);
     }
@@ -538,6 +603,12 @@ _Please confirm your attendance!_`;
     }
   };
 
+  const handleRebookRoom = (booking: any) => {
+    setSelectedRoomId(booking.roomId.toString());
+    if (booking.title) setMeetingTitle(booking.title);
+    setCurrentView("rooms");
+  };
+
   // Add system operation logs helper
   const addAuditLog = (title: string, description: string, code = "SYS-OP", icon = "info", iconColor = "text-primary") => {
     fetchData();
@@ -547,11 +618,15 @@ _Please confirm your attendance!_`;
   useEffect(() => {
     const storedRole = localStorage.getItem("userRole");
     const storedName = localStorage.getItem("userName");
+    const storedEmail = localStorage.getItem("userEmail");
+    const storedUserId = localStorage.getItem("userId");
     if (!storedRole || storedRole !== "admin") {
       router.replace("/login");
       return;
     }
     setLoading(false);
+    if (storedUserId) setUserId(storedUserId);
+    if (storedEmail) setUserEmail(storedEmail);
     if (storedName) setUserName(storedName);
     fetchData();
 
@@ -837,19 +912,19 @@ _Please confirm your attendance!_`;
   const maintenanceRoomsCount = rooms.filter(r => r.status === "maintenance").length;
   const globalOccupancyPercentage = Math.round((bookings.length / (rooms.length * 8)) * 100);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background text-on-surface flex items-center justify-center font-bold text-lg">
-        <div className="flex flex-col items-center gap-4">
-          <span className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></span>
-          <span>Redirecting to login...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 flex overflow-hidden bg-background text-on-surface">
+    <div className="flex-1 flex overflow-hidden bg-background text-on-surface relative">
+      {/* Guaranteed Full Splash Animation Overlay */}
+      {showSplash && (
+        <FlashScreen
+          show={showSplash}
+          message="Authenticating SysOps Admin Authority..."
+          subMessage="Loading Enterprise Telemetry & Real-Time Audit Logs..."
+          minDuration={3200}
+          onFinished={() => setShowSplash(false)}
+        />
+      )}
+
       {/* Ambient Background Lighting */}
       <div className="ambient-glow-indigo"></div>
       <div className="ambient-glow-violet"></div>
@@ -937,7 +1012,22 @@ _Please confirm your attendance!_`;
               Active Reservations
             </button>
           </li>
+
+          <li>
+            <button 
+              onClick={() => setCurrentView("feedback_panel")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
+                currentView === "feedback_panel"
+                  ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "feedback_panel" ? { fontVariationSettings: "'FILL' 1" } : {}}>reviews</span>
+              User Feedback
+            </button>
+          </li>
         </ul>
+
 
         {/* User Profile Card */}
         <div className="mt-auto pt-4 border-t border-outline-variant/20 px-2 flex items-center justify-between gap-3">
@@ -958,7 +1048,7 @@ _Please confirm your attendance!_`;
           </div>
           <button 
             onClick={handleLogout}
-            className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors flex items-center justify-center"
+            className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors flex items-center justify-center cursor-pointer"
             title="Logout"
           >
             <span className="material-symbols-outlined text-[20px]">logout</span>
@@ -970,8 +1060,11 @@ _Please confirm your attendance!_`;
       <div className="ml-0 md:ml-64 flex flex-col flex-1 h-screen w-full max-w-full overflow-x-hidden">
         {/* TopNavBar */}
         <header className="hidden md:flex fixed top-0 right-0 left-64 h-20 bg-surface/60 backdrop-blur-md border-b border-outline-variant/10 shadow-sm z-40 px-stack-lg justify-between items-center transition-all duration-300">
-          <div className="flex items-center">
-            <PayswiffLogo size="sm" />
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-on-surface-variant bg-surface-container-high/60 px-3 py-1 rounded-full border border-outline-variant/20 hidden sm:inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              SysOps Console Active
+            </span>
           </div>
           <div className="flex items-center gap-6">
             {/* Context Search Bar */}
@@ -1498,15 +1591,15 @@ _Please confirm your attendance!_`;
 
                   <button
                     onClick={() => setAuditBookingFilter("pending")}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                       auditBookingFilter === "pending"
                         ? "bg-amber-600 text-white shadow-md shadow-amber-600/20 scale-105"
-                        : "bg-surface-container-high/60 text-amber-400 hover:bg-amber-950/30 border border-amber-500/20"
+                        : "bg-surface-container-high/60 text-amber-800 dark:text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                     <span>Pending</span>
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-950/40 text-amber-300 font-mono">
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-900 dark:text-amber-200 font-mono">
                       {bookings.filter(b => b.status.toLowerCase() === "pending").length}
                     </span>
                   </button>
@@ -1593,7 +1686,7 @@ _Please confirm your attendance!_`;
                         b.booker.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
                         (b.bookerEmail && b.bookerEmail.toLowerCase().includes(auditSearchQuery.toLowerCase())) ||
                         b.id.includes(auditSearchQuery) ||
-                        b.fullDateStr.toLowerCase().includes(auditSearchQuery.toLowerCase());
+                        (b.fullDateStr || b.date || "").toLowerCase().includes(auditSearchQuery.toLowerCase());
 
                       return matchesStatus && matchesSearch;
                     }).length === 0 ? (
@@ -1621,7 +1714,7 @@ _Please confirm your attendance!_`;
                               b.booker.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
                               (b.bookerEmail && b.bookerEmail.toLowerCase().includes(auditSearchQuery.toLowerCase())) ||
                               b.id.includes(auditSearchQuery) ||
-                              b.fullDateStr.toLowerCase().includes(auditSearchQuery.toLowerCase());
+                              (b.fullDateStr || b.date || "").toLowerCase().includes(auditSearchQuery.toLowerCase());
 
                             return matchesStatus && matchesSearch;
                           })
@@ -1631,15 +1724,15 @@ _Please confirm your attendance!_`;
                             const isCancelled = booking.status.toLowerCase() === "cancelled";
 
                             const statusBadge = isApproved ? (
-                              <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs px-2.5 py-1 rounded-full font-bold">
+                              <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs px-2.5 py-1 rounded-full font-bold">
                                 <span className="material-symbols-outlined text-[13px]">check_circle</span> Approved
                               </span>
                             ) : isPending ? (
-                              <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs px-2.5 py-1 rounded-full font-bold animate-pulse">
+                              <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/40 text-xs px-2.5 py-1 rounded-full font-bold animate-pulse">
                                 <span className="material-symbols-outlined text-[13px]">hourglass_top</span> Pending Approval
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 bg-red-500/15 text-red-400 border border-red-500/30 text-xs px-2.5 py-1 rounded-full font-bold">
+                              <span className="inline-flex items-center gap-1 bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/30 text-xs px-2.5 py-1 rounded-full font-bold">
                                 <span className="material-symbols-outlined text-[13px]">cancel</span> Cancelled
                               </span>
                             );
@@ -1675,7 +1768,7 @@ _Please confirm your attendance!_`;
                                     </p>
                                     <p className="text-on-surface-variant flex items-center gap-1.5">
                                       <span className="material-symbols-outlined text-outline text-[16px]">event</span>
-                                      {booking.fullDateStr} · <strong className="text-on-surface">{booking.time}</strong>
+                                      {booking.fullDateStr || booking.date || "Date"} · <strong className="text-on-surface">{booking.time}</strong>
                                     </p>
                                     <p className="text-on-surface-variant flex items-center gap-1.5">
                                       <span className="material-symbols-outlined text-outline text-[16px]">person</span>
@@ -1699,52 +1792,117 @@ _Please confirm your attendance!_`;
                                       </div>
                                     )}
                                   </div>
+
+                                  {/* Pending Extension Request Authorization for Admin */}
+                                  {booking.extensionStatus === "Pending" && (
+                                    <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl p-3 mb-3 text-xs flex flex-col gap-2 shadow-inner">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                          <span className="material-symbols-outlined text-[16px] animate-spin text-amber-600 dark:text-amber-400">update</span>
+                                          Extension Requested: +{booking.pendingExtensionMinutes || 30} Mins
+                                        </span>
+                                        <span className="text-[10px] bg-amber-500/25 text-amber-900 dark:text-amber-200 font-bold px-2 py-0.5 rounded-full border border-amber-500/40">
+                                          Admin Approval Required
+                                        </span>
+                                      </div>
+                                      {booking.extensionReason && (
+                                        <p className="text-[11px] text-on-surface-variant italic bg-black/10 dark:bg-black/30 p-2 rounded-lg border border-outline-variant/15">
+                                          &ldquo;{booking.extensionReason}&rdquo;
+                                        </p>
+                                      )}
+                                      <div className="flex gap-2 pt-1">
+                                        <button
+                                          onClick={() => handleAdminExtensionDecision(booking.id, "Approve")}
+                                          disabled={isProcessingApproval === `ext-${booking.id}`}
+                                          className="flex-1 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all hover:scale-[1.02] active:scale-98 cursor-pointer"
+                                        >
+                                          <span className="material-symbols-outlined text-[15px]">check</span>
+                                          {isProcessingApproval === `ext-${booking.id}` ? "..." : `Approve (+${booking.pendingExtensionMinutes || 30}m)`}
+                                        </button>
+                                        <button
+                                          onClick={() => handleAdminExtensionDecision(booking.id, "Reject")}
+                                          disabled={isProcessingApproval === `ext-${booking.id}`}
+                                          className="flex-1 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-700 dark:text-red-400 border border-red-500/30 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
+                                        >
+                                          <span className="material-symbols-outlined text-[15px]">close</span>
+                                          Reject
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* Actions Toolbar */}
-                                <div className="pt-3 border-t border-outline-variant/15 flex items-center justify-between gap-2">
-                                  {isPending ? (
-                                    <div className="flex items-center gap-2 w-full">
+                                  <div className="pt-3 border-t border-outline-variant/15 flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
                                       <button
-                                        onClick={() => handleAdminApprovalAction(booking.id, "Approved")}
-                                        disabled={isProcessingApproval === booking.id}
-                                        className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all"
+                                        onClick={() => handleRebookRoom(booking)}
+                                        className="text-[11px] font-bold text-white bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 px-2.5 py-1 rounded-lg border border-red-500/30 transition-all flex items-center gap-1 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                        title={`Rebook ${booking.roomName}`}
                                       >
-                                        <span className="material-symbols-outlined text-[15px]">check</span>
-                                        {isProcessingApproval === booking.id ? "Processing..." : "Approve"}
+                                        <span className="material-symbols-outlined text-[13px]">event_repeat</span> Rebook
                                       </button>
                                       <button
-                                        onClick={() => handleAdminApprovalAction(booking.id, "Rejected")}
-                                        disabled={isProcessingApproval === booking.id}
-                                        className="flex-1 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 font-bold text-xs flex items-center justify-center gap-1 transition-all"
+                                        onClick={() => {
+                                          setTargetFeedbackBooking({
+                                            id: booking.id,
+                                            title: booking.title,
+                                            roomName: booking.roomName,
+                                            roomId: booking.roomId,
+                                          });
+                                          setIsFeedbackModalOpen(true);
+                                        }}
+                                        className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 px-2 py-1 rounded-lg border border-amber-500/40 transition-all flex items-center gap-1 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                        title="Give feedback & 5-star rating for this room"
                                       >
-                                        <span className="material-symbols-outlined text-[15px]">close</span>
-                                        Reject
-                                      </button>
-                                    </div>
-                                  ) : isApproved ? (
-                                    <div className="flex items-center justify-between w-full">
-                                      <a
-                                        href={getWhatsAppShareLink(booking)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 hover:underline"
-                                      >
-                                        <span className="material-symbols-outlined text-[14px]">share</span> WhatsApp Invite
-                                      </a>
-                                      <button
-                                        onClick={() => handleCancelBooking(booking.id)}
-                                        className="text-[11px] font-bold text-red-400 hover:text-red-300 hover:underline flex items-center gap-1"
-                                      >
-                                        <span className="material-symbols-outlined text-[14px]">cancel</span> Cancel Reservation
+                                        <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                        </svg>
+                                        Rate
                                       </button>
                                     </div>
-                                  ) : (
-                                    <span className="text-[11px] text-outline italic">
-                                      Cancelled record retained for audit log history
-                                    </span>
-                                  )}
-                                </div>
+                                    {isPending ? (
+                                      <div className="flex items-center gap-2 flex-1 justify-end">
+                                        <button
+                                          onClick={() => handleAdminApprovalAction(booking.id, "Approved")}
+                                          disabled={isProcessingApproval === booking.id}
+                                          className="py-1 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all"
+                                        >
+                                          <span className="material-symbols-outlined text-[15px]">check</span>
+                                          {isProcessingApproval === booking.id ? "..." : "Approve"}
+                                        </button>
+                                        <button
+                                          onClick={() => handleAdminApprovalAction(booking.id, "Rejected")}
+                                          disabled={isProcessingApproval === booking.id}
+                                          className="py-1 px-3 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 font-bold text-xs flex items-center justify-center gap-1 transition-all"
+                                        >
+                                          <span className="material-symbols-outlined text-[15px]">close</span>
+                                          Reject
+                                        </button>
+                                      </div>
+                                    ) : isApproved ? (
+                                      <div className="flex items-center gap-3">
+                                        <a
+                                          href={getWhatsAppShareLink(booking)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 hover:underline"
+                                        >
+                                          <span className="material-symbols-outlined text-[14px]">share</span> WhatsApp
+                                        </a>
+                                        <button
+                                          onClick={() => handleCancelBooking(booking.id)}
+                                          className="text-[11px] font-bold text-red-400 hover:text-red-300 hover:underline flex items-center gap-1"
+                                        >
+                                          <span className="material-symbols-outlined text-[14px]">cancel</span> Cancel
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[11px] text-outline italic">
+                                        Cancelled
+                                      </span>
+                                    )}
+                                  </div>
                               </div>
                             );
                           })}
@@ -1870,24 +2028,24 @@ _Please confirm your attendance!_`;
                           </span>
                         </div>
                         <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
-                          {selectedDayItem.isToday ? "Today" : `+${selectedDayIndex} Day`}
+                          {selectedDayItem.isToday ? "Today" : `+${selectedDayIndex} Days`}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center px-1">
-                        <span className="font-label-sm text-xs text-outline font-semibold uppercase tracking-wider">Select Day (6-Day Window)</span>
+                        <span className="font-label-sm text-xs text-outline font-semibold uppercase tracking-wider">Select Day ({upcoming6Days.length} Days in {selectedDayItem.monthName})</span>
                         <span className="font-label-sm text-[11px] text-primary font-semibold">{getDateName(selectedDayItem)}</span>
                       </div>
 
-                      {/* 6-Day Date Scroll Reel Starting from Today */}
-                      <div className="grid grid-cols-6 gap-1.5 py-1">
+                      {/* Date Scroll Reel Starting from Today till End of Month */}
+                      <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
                         {upcoming6Days.map((d) => {
                           const isActive = selectedDayIndex === d.index;
                           return (
                             <button 
                               key={d.dateKey}
                               onClick={() => setSelectedDayIndex(d.index)}
-                              className={`flex flex-col items-center justify-center py-2.5 px-1 rounded-xl border transition-all duration-200 shrink-0 ${
+                              className={`flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border transition-all duration-200 shrink-0 min-w-[60px] cursor-pointer ${
                                 isActive 
                                   ? "bg-gradient-to-b from-primary-container/30 to-primary/20 border-2 border-primary text-primary shadow-lg font-bold scale-105"
                                   : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
@@ -2134,6 +2292,132 @@ _Please confirm your attendance!_`;
           )}
 
           {/* VIEW: ROOM SUPPLIES & PROCUREMENT TRACKER */}
+          {/* ─── User Feedback Panel ─── */}
+          {currentView === "feedback_panel" && (() => {
+            const starEmoji = (n: number) => '⭐'.repeat(n) + '☆'.repeat(5 - n);
+            const filtered = allFeedbacks.filter(f => {
+              const matchStar = feedbackRatingFilter === null || f.rating === feedbackRatingFilter;
+              const q = feedbackSearchQuery.toLowerCase();
+              const matchQ = !q || (f.user?.name || '').toLowerCase().includes(q) || (f.room?.name || '').toLowerCase().includes(q) || (f.comment || '').toLowerCase().includes(q) || (f.booking?.title || '').toLowerCase().includes(q);
+              return matchStar && matchQ;
+            });
+            const avgOverall = allFeedbacks.length > 0 ? (allFeedbacks.reduce((s, f) => s + f.rating, 0) / allFeedbacks.length).toFixed(1) : '—';
+            const countByStar = [5,4,3,2,1].map(s => ({ star: s, count: allFeedbacks.filter(f => f.rating === s).length }));
+            return (
+              <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex-1 overflow-y-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-6">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h1 className="font-headline-lg text-3xl font-bold text-on-surface">User Feedback & Reviews</h1>
+                      <span className="bg-indigo-500/20 text-indigo-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/30">Admin View</span>
+                    </div>
+                    <p className="font-body-md text-on-surface-variant mt-1">All post-meeting ratings submitted by employees and managers. Use this to identify room issues and improve facilities.</p>
+                  </div>
+                  <button onClick={fetchData} className="px-4 py-2.5 bg-surface-container-high border border-outline-variant/30 text-on-surface font-bold text-sm rounded-xl flex items-center gap-2 hover:bg-surface-container-highest transition-all">
+                    <span className="material-symbols-outlined text-[18px]">refresh</span> Refresh
+                  </button>
+                </div>
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-4 text-center flex flex-col items-center justify-center">
+                    <p className="text-3xl font-bold text-indigo-400">{avgOverall}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">Avg Rating</p>
+                    <div className="mt-1">
+                      <StarRating2D rating={Math.round(Number(avgOverall) || 5)} size="xs" />
+                    </div>
+                  </div>
+                  <div className="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-4 text-center">
+                    <p className="text-3xl font-bold text-on-surface">{allFeedbacks.length}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">Total Reviews</p>
+                  </div>
+                  <div className="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-4 text-center">
+                    <p className="text-3xl font-bold text-emerald-400">{allFeedbacks.filter(f => f.rating >= 4).length}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">Positive (4-5★)</p>
+                  </div>
+                  <div className="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-4 text-center">
+                    <p className="text-3xl font-bold text-rose-400">{allFeedbacks.filter(f => f.rating <= 2).length}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">Needs Attention (1-2★)</p>
+                  </div>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-3 mb-6">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+                    <input
+                      value={feedbackSearchQuery}
+                      onChange={e => setFeedbackSearchQuery(e.target.value)}
+                      placeholder="Search by user, room, or comment..."
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-outline-variant/30 bg-surface-container-high text-on-surface text-sm focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button onClick={() => setFeedbackRatingFilter(null)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${feedbackRatingFilter === null ? 'bg-primary/20 border-primary text-primary' : 'border-outline-variant/30 text-on-surface-variant hover:text-primary'}`}>All Stars</button>
+                    {[5,4,3,2,1].map(s => (
+                      <button key={s} onClick={() => setFeedbackRatingFilter(feedbackRatingFilter === s ? null : s)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${feedbackRatingFilter === s ? 'bg-primary/20 border-primary text-primary' : 'border-outline-variant/30 text-on-surface-variant hover:text-primary'}`}>
+                        {s}★ <span className="opacity-60">({countByStar.find(c => c.star === s)?.count || 0})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Feedback Cards */}
+                {filtered.length === 0 ? (
+                  <div className="text-center py-16 text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[48px] block mb-3 opacity-40">reviews</span>
+                    <p className="text-lg font-semibold">No feedback found</p>
+                    <p className="text-sm mt-1 opacity-60">Feedback will appear here once users submit ratings after meetings.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filtered.map((fb: any) => {
+                      const dt = fb.booking?.startTime ? new Date(fb.booking.startTime).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }) : '—';
+                      const starColor = fb.rating >= 4 
+                        ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10' 
+                        : fb.rating === 3 
+                          ? 'text-amber-700 dark:text-amber-300 border-amber-500/40 bg-amber-500/15' 
+                          : 'text-rose-700 dark:text-rose-400 border-rose-500/30 bg-rose-500/10';
+                      return (
+                        <div key={fb.id} className="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-4 flex flex-col gap-3 hover:border-primary/40 transition-all hover:shadow-lg hover:shadow-primary/5">
+                          {/* Header */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-bold text-sm text-on-surface">{fb.user?.name || 'Unknown User'}</p>
+                              <p className="text-[11px] text-on-surface-variant">{fb.user?.email} · <span className="capitalize">{fb.user?.role}</span></p>
+                            </div>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${starColor}`}>{fb.rating}★</span>
+                          </div>
+
+                          {/* 2D Flat Vector Stars visual */}
+                          <div className="my-0.5">
+                            <StarRating2D rating={fb.rating} size="sm" />
+                          </div>
+
+                          {/* Room + Booking */}
+                          <div className="text-xs space-y-1 text-on-surface-variant">
+                            <p><span className="material-symbols-outlined text-[13px] align-middle mr-1">meeting_room</span>{fb.room?.name || '—'} · {fb.room?.location || ''}</p>
+                            <p><span className="material-symbols-outlined text-[13px] align-middle mr-1">calendar_today</span>{fb.booking?.title || '—'} · {dt}</p>
+                          </div>
+
+                          {/* Comment */}
+                          {fb.comment && (
+                            <div className="bg-surface-container-high rounded-xl p-3 text-xs text-on-surface-variant italic border border-outline-variant/15">
+                              "{fb.comment}"
+                            </div>
+                          )}
+                          {!fb.comment && (
+                            <p className="text-[11px] text-outline italic">No written comment submitted.</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </main>
+            );
+          })()}
+
           {currentView === "supplies" && (
             <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex-1 overflow-y-auto">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-6">
@@ -2838,6 +3122,14 @@ _Please confirm your attendance!_`;
           </div>
         </div>
       )}
+
+      {/* Post-Meeting 5-Star Feedback Modal */}
+      <MeetingFeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        booking={targetFeedbackBooking}
+        onFeedbackSubmitted={fetchData}
+      />
     </div>
   );
 }

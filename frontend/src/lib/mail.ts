@@ -23,7 +23,7 @@ function getTransporter() {
   });
 }
 
-const fromAddress = process.env.SMTP_FROM || '"Payswiff Reserve" <no-reply@payswiff.com>';
+const fromAddress = process.env.SMTP_FROM || '"Payswiff Meeting Room" <no-reply@payswiff.com>';
 
 interface MailOptions {
   to: string;
@@ -92,7 +92,7 @@ function createIcsContent(
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Payswiff Reserve//Spatial Management Suite//EN',
+    'PRODID:-//Payswiff Meeting Room//Spatial Management Suite//EN',
     'CALSCALE:GREGORIAN',
     `METHOD:${method}`,
     'BEGIN:VEVENT',
@@ -101,7 +101,7 @@ function createIcsContent(
     `DTSTART:${dtStart}`,
     `DTEND:${dtEnd}`,
     `SUMMARY:${title}`,
-    'DESCRIPTION:Payswiff Reserve Facility Reservation Invite',
+    'DESCRIPTION:Payswiff Meeting Room Facility Reservation Invite',
     `LOCATION:${location}`,
     `STATUS:${status}`,
     `SEQUENCE:${sequence}`,
@@ -135,7 +135,7 @@ export async function sendBookingConfirmationEmail(
   // Generate Google Calendar Link
   const gcalStart = formatCalendarDate(startTime);
   const gcalEnd = formatCalendarDate(endTime);
-  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Payswiff Reserve Meeting Room booking confirmation.')}&location=${encodeURIComponent(`${roomName} (${location})`)}`;
+  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Payswiff Meeting Room booking confirmation.')}&location=${encodeURIComponent(`${roomName} (${location})`)}`;
 
   // Generate standard iCal content using deterministic UID
   const uid = `booking-${bookingId}`;
@@ -152,7 +152,7 @@ export async function sendBookingConfirmationEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #1e293b;">
-      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
+      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Meeting Room</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${employeeName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         Your meeting reservation has been successfully scheduled and confirmed.
@@ -226,7 +226,7 @@ export async function sendApprovalRequestEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #ef4444;">
-      <h1 style="color: #ef4444; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
+      <h1 style="color: #ef4444; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Meeting Room</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${managerName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         A new facility reservation requires your manager approval.
@@ -342,7 +342,7 @@ export async function sendBookingCancellationEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f43f5e;">
-      <h1 style="color: #f43f5e; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
+      <h1 style="color: #f43f5e; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Meeting Room</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${name}</strong>,</p>
       <p style="font-size: 14px; color: #f43f5e; line-height: 1.6; font-weight: bold;">
         ⚠️ Reservation Cancelled Alert
@@ -412,7 +412,7 @@ export async function sendBookingRejectionEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #ef4444;">
-      <h1 style="color: #ef4444; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
+      <h1 style="color: #ef4444; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Meeting Room</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${employeeName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         Unfortunately, your pending reservation request for <strong>${roomName}</strong> has been declined.
@@ -476,7 +476,7 @@ export async function sendBookingUpdateEmail(
   // Generate Google Calendar Link
   const gcalStart = formatCalendarDate(startTime);
   const gcalEnd = formatCalendarDate(endTime);
-  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Updated Payswiff Reserve booking.')}&location=${encodeURIComponent(`${roomName} (${location})`)}`;
+  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Updated Payswiff Meeting Room booking.')}&location=${encodeURIComponent(`${roomName} (${location})`)}`;
 
   const uid = `booking-${bookingId}`;
   const icsContent = createIcsContent(
@@ -492,7 +492,7 @@ export async function sendBookingUpdateEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #3b82f6;">
-      <h1 style="color: #3b82f6; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
+      <h1 style="color: #3b82f6; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Meeting Room</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${employeeName}</strong>,</p>
       <p style="font-size: 14px; color: #3b82f6; line-height: 1.6; font-weight: bold;">
         ✏️ Reservation Details Updated
@@ -568,7 +568,7 @@ export async function sendNoShowReleaseEmail(
 
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f59e0b;">
-      <h1 style="color: #f59e0b; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
+      <h1 style="color: #f59e0b; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Meeting Room</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${employeeName}</strong>,</p>
       <p style="font-size: 14px; color: #f59e0b; line-height: 1.6; font-weight: bold;">
         ⚠️ Auto-Release Alert: No Show
@@ -619,7 +619,7 @@ export async function sendRsvpResponseEmail(
   const isAccepted = status === 'Accepted';
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid ${isAccepted ? '#10b981' : '#f43f5e'};">
-      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
+      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Meeting Room</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${organizerName}</strong>,</p>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         An attendee has responded to your meeting invitation.
@@ -666,7 +666,7 @@ export async function sendMeetingExtensionNoticeEmail(
 ) {
   const html = `
     <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #f59e0b;">
-      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Reserve</h1>
+      <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #334155; padding-bottom: 10px;">Payswiff Meeting Room</h1>
       <p style="font-size: 16px; margin-top: 20px;">Hello <strong>${toName}</strong>,</p>
       <p style="font-size: 14px; color: #f59e0b; line-height: 1.6; font-weight: bold;">
         ⏱️ Important Room Schedule Update
@@ -692,7 +692,7 @@ export async function sendMeetingExtensionNoticeEmail(
         </table>
       </div>
       <p style="font-size: 13px; color: #94a3b8;">
-        Your reservation slot has been updated accordingly. Please log into Payswiff Reserve to select an alternate room or view updated timings.
+        Your reservation slot has been updated accordingly. Please log into Payswiff Meeting Room to select an alternate room or view updated timings.
       </p>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px;">
         Payswiff Corporate Spatial Management Suite.
@@ -706,6 +706,59 @@ export async function sendMeetingExtensionNoticeEmail(
     html,
   });
 }
+// Send feedback notification to admin when a user submits a rating/review
+export async function sendFeedbackToAdmin({
+  adminEmail,
+  userName,
+  userEmail,
+  roomName,
+  bookingTitle,
+  rating,
+  comment,
+}: {
+  adminEmail: string;
+  userName: string;
+  userEmail: string;
+  roomName: string;
+  bookingTitle: string;
+  rating: number;
+  comment?: string | null;
+}): Promise<boolean> {
+  const stars = '⭐'.repeat(rating) + '☆'.repeat(5 - rating);
+  const commentRow = comment
+    ? `<tr><td style="padding:8px 0;color:#94a3b8;font-size:13px;">Comment</td><td style="padding:8px 0;color:#e2e8f0;font-size:13px;">"${comment}"</td></tr>`
+    : '';
 
+  const html = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:32px;max-width:600px;margin:0 auto;border-radius:16px;border:1px solid #1e293b;">
+      <h1 style="color:#6366f1;font-size:22px;margin-bottom:4px;border-bottom:2px solid #334155;padding-bottom:10px;">Payswiff Meeting Room</h1>
+      <p style="color:#94a3b8;font-size:13px;margin-top:4px;">User Feedback Notification</p>
 
+      <div style="background:#1e293b;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #334155;">
+        <p style="font-size:28px;text-align:center;margin:0 0 8px 0;">${stars}</p>
+        <p style="font-size:18px;font-weight:bold;text-align:center;color:#6366f1;margin:0;">${rating}/5 Stars</p>
+      </div>
 
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        <tr><td style="padding:8px 0;color:#94a3b8;font-size:13px;width:120px;">Submitted By</td><td style="padding:8px 0;color:#e2e8f0;font-size:13px;font-weight:bold;">${userName} (${userEmail})</td></tr>
+        <tr><td style="padding:8px 0;color:#94a3b8;font-size:13px;">Room</td><td style="padding:8px 0;color:#e2e8f0;font-size:13px;">${roomName}</td></tr>
+        <tr><td style="padding:8px 0;color:#94a3b8;font-size:13px;">Booking</td><td style="padding:8px 0;color:#e2e8f0;font-size:13px;">${bookingTitle}</td></tr>
+        ${commentRow}
+      </table>
+
+      <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;margin-top:12px;">
+        <p style="font-size:12px;color:#64748b;margin:0;">Log in to the <strong style="color:#6366f1;">Admin Portal → User Feedback</strong> section to view all feedback and take action on any reported issues.</p>
+      </div>
+
+      <p style="font-size:12px;color:#64748b;text-align:center;margin-top:24px;border-top:1px solid #1e293b;padding-top:14px;">
+        Payswiff Corporate Spatial Management Suite.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `[Feedback Alert] ${rating}★ rating for "${roomName}" — from ${userName}`,
+    html,
+  });
+}

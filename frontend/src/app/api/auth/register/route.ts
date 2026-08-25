@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { getLeastLoadedManagerId } from '@/lib/managerAssignment';
 
 export async function POST(request: Request) {
   try {
@@ -27,12 +28,19 @@ export async function POST(request: Request) {
     const passwordHash = bcrypt.hashSync(password, 10);
     const normalizedRole = role && ['Admin', 'Manager', 'Employee'].includes(role) ? role : 'Employee';
 
+    // If registering an employee, find the least loaded manager to assign equally
+    let assignedManagerId: number | null = null;
+    if (normalizedRole.toLowerCase() === 'employee') {
+      assignedManagerId = await getLeastLoadedManagerId();
+    }
+
     const user = await prisma.user.create({
       data: {
         name: name.trim(),
         email: email.toLowerCase().trim(),
         passwordHash,
         role: normalizedRole,
+        managerId: assignedManagerId,
         isActive: true,
       },
     });

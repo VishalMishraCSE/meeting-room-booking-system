@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { sendEmail } from '@/lib/mail';
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
     await sendEmail({
       to: normalizedEmail,
-      subject: 'Payswiff Reserve | Credentials Updated Successfully',
+      subject: 'PAYSWIFF MEETING ROOM | Credentials Updated Successfully',
       html: confirmationHtml,
     });
 

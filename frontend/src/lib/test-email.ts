@@ -1,4 +1,4 @@
-import { sendBookingConfirmationEmail } from './mail';
+﻿import { sendBookingConfirmationEmail } from './mail';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
@@ -18,7 +18,7 @@ async function runTest() {
     'Floor 4, North Wing',
     new Date(),
     new Date(Date.now() + 30 * 60 * 1000),
-    'Payswiff Reserve Setup Verification'
+    'PAYSWIFF MEETING ROOM Setup Verification'
   );
 
   if (success) {

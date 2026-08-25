@@ -300,6 +300,110 @@ body {
   animation: pulse-dot-amber 2s infinite;
 }
 
+@keyframes flashProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(10%);
+  }
+  100% {
+    transform: translateX(110%);
+  }
+}
+
+/* ─── Splash Screen Choreographed Animations ─── */
+@keyframes pillarDropIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-80px) scaleY(0.1);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(6px) scaleY(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes wordmarkSwiftSlide {
+  0% {
+    opacity: 0;
+    transform: translateX(70px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes subsidiaryFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chakraContinuousSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.splash-pillar-1 {
+  animation: pillarDropIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+
+.splash-pillar-2 {
+  animation: pillarDropIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.32s forwards;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+
+.splash-pillar-3 {
+  animation: pillarDropIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.54s forwards;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+
+.splash-pillar-4 {
+  animation: pillarDropIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.76s forwards;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+
+.splash-wordmark {
+  animation: wordmarkSwiftSlide 0.85s cubic-bezier(0.16, 1, 0.3, 1) 1.05s forwards;
+  opacity: 0;
+}
+
+.splash-subsidiary {
+  animation: subsidiaryFadeUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) 1.85s forwards;
+  opacity: 0;
+}
+
+.splash-chakra {
+  transform-origin: 427px 130px;
+  animation: chakraContinuousSpin 2.8s linear infinite;
+}
+
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }

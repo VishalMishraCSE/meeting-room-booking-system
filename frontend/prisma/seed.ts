@@ -109,7 +109,9 @@ async function main() {
   }
 
   const employees = [];
-  for (const item of employeeEmails) {
+  for (let i = 0; i < employeeEmails.length; i++) {
+    const item = employeeEmails[i];
+    const assignedManager = managers[i % managers.length];
     const user = await prisma.user.create({
       data: {
         name: item.name,
@@ -117,6 +119,7 @@ async function main() {
         passwordHash: defaultPassword,
         role: 'Employee',
         departmentId: engineering.id,
+        managerId: assignedManager ? assignedManager.id : null,
       },
     });
     employees.push(user);

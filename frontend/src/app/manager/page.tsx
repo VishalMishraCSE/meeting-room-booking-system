@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import PayswiffLogo from "@/components/PayswiffLogo";
+import MeetingFeedbackModal from "@/components/MeetingFeedbackModal";
+import FlashScreen from "@/components/FlashScreen";
 
 interface Room {
   id: string;
@@ -16,14 +18,26 @@ interface Room {
 
 interface Booking {
   id: string;
+  userId?: string;
   roomId: string;
   roomName: string;
+  month?: number;
+  monthName?: string;
+  dayName?: string;
+  year?: number;
   date: string;
+  fullDateStr?: string;
+  startTimeRaw?: string;
+  endTimeRaw?: string;
   time: string;
   title: string;
   booker: string;
+  bookerEmail?: string;
   attendees: string[];
   status: string;
+  pendingExtensionMinutes?: number;
+  extensionReason?: string;
+  extensionStatus?: string;
 }
 
 interface PendingApproval {
@@ -56,8 +70,15 @@ interface RoomSupply {
 export default function ManagerPortal() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [userId, setUserId] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("Sarah Jenkins");
   const [currentView, setCurrentView] = useState<string>("bookings"); // "bookings" | "rooms"
+
+  // Post-meeting 5-star feedback modal state
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState<boolean>(false);
+  const [targetFeedbackBooking, setTargetFeedbackBooking] = useState<any>(null);
 
   // Unified reactive mock database state
   const [rooms, setRooms] = useState<Room[]>([
@@ -120,13 +141,19 @@ export default function ManagerPortal() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
 
-  // 6 Days Real-World Date Generation from Today
+  // Real-World Date Generation from Today to End of Current Month
   const upcoming6Days = useMemo(() => {
     const list = [];
     const base = new Date();
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
+    const currentYear = base.getFullYear();
+    const currentMonth = base.getMonth();
+    const todayDate = base.getDate();
+    // Calculate total days remaining in the current month starting from today
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const totalDaysRemaining = lastDayOfMonth - todayDate + 1;
+
+    for (let i = 0; i < totalDaysRemaining; i++) {
+      const d = new Date(currentYear, currentMonth, todayDate + i);
       const isToday = i === 0;
       const dayNum = d.getDate();
       const month = d.getMonth();
@@ -290,6 +317,7 @@ export default function ManagerPortal() {
 
           return {
             id: dbB.id.toString(),
+            userId: dbB.userId?.toString() || (dbB.user?.id ? dbB.user.id.toString() : ""),
             roomId: dbB.roomId.toString(),
             roomName: dbB.room?.name || "Unknown Room",
             month: start.getMonth(),
@@ -303,8 +331,12 @@ export default function ManagerPortal() {
             time: timeStr,
             title: dbB.title,
             booker: dbB.user?.name || "Unknown",
+            bookerEmail: dbB.user?.email || "",
             attendees: dbB.attendees?.map((a: any) => a.email) || [],
-            status: dbB.status
+            status: dbB.status,
+            pendingExtensionMinutes: dbB.pendingExtensionMinutes,
+            extensionReason: dbB.extensionReason,
+            extensionStatus: dbB.extensionStatus
           };
         });
         setBookings(mappedBookings);
@@ -322,6 +354,21 @@ export default function ManagerPortal() {
           setUnreadNotificationsCount(data.unreadCount || 0);
         }
       }).catch(e => console.error("Failed to fetch notifications:", e));
+
+      // Check for completed meetings needing feedback
+      fetch("/api/feedback?pendingOnly=true").then(res => res.json()).then(data => {
+        if (data && Array.isArray(data.pendingFeedbacks) && data.pendingFeedbacks.length > 0) {
+          const first = data.pendingFeedbacks[0];
+          setTargetFeedbackBooking({
+            id: first.id,
+            title: first.title,
+            roomName: first.room?.name || "Meeting Room",
+            roomId: first.roomId,
+            date: first.startTime ? new Date(first.startTime).toLocaleDateString() : "",
+          });
+          setIsFeedbackModalOpen(true);
+        }
+      }).catch(e => console.error("Failed to check feedback requests:", e));
 
       if (pendingRes.ok && Array.isArray(pendingData)) {
         const mappedApprovals = pendingData.map((dbB: any) => {
@@ -423,7 +470,7 @@ export default function ManagerPortal() {
       : 'All Team Members';
       
     const text = 
-`🏢 *PAYSWIFF RESERVE: OFFICIAL MEETING INVITATION*
+`🏢 *PAYSWIFF MEETING ROOM: OFFICIAL MEETING INVITATION*
 
 📌 *Meeting Title:* ${booking.title}
 🚪 *Facility Room:* ${booking.roomName}
@@ -441,15 +488,25 @@ _Please confirm your attendance!_`;
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   };
 
+  const handleRebookRoom = (booking: any) => {
+    setSelectedRoomId(booking.roomId.toString());
+    if (booking.title) setMeetingTitle(booking.title);
+    setCurrentView("rooms");
+  };
+
   // Initialize and Toggle Theme & Session Guard
   useEffect(() => {
     const storedRole = localStorage.getItem("userRole");
     const storedName = localStorage.getItem("userName");
+    const storedEmail = localStorage.getItem("userEmail");
+    const storedUserId = localStorage.getItem("userId");
     if (!storedRole || storedRole !== "manager") {
       router.replace("/login");
       return;
     }
     setLoading(false);
+    if (storedUserId) setUserId(storedUserId);
+    if (storedEmail) setUserEmail(storedEmail);
     if (storedName) setUserName(storedName);
     fetchData();
 
@@ -785,19 +842,19 @@ _Please confirm your attendance!_`;
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background text-on-surface flex items-center justify-center font-bold text-lg">
-        <div className="flex flex-col items-center gap-4">
-          <span className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></span>
-          <span>Redirecting to login...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 flex overflow-hidden bg-background text-on-surface">
+    <div className="flex-1 flex overflow-hidden bg-background text-on-surface relative">
+      {/* Guaranteed Full Splash Animation Overlay */}
+      {showSplash && (
+        <FlashScreen
+          show={showSplash}
+          message="Authenticating Manager Portal..."
+          subMessage="Loading Space Allocations & Approvals..."
+          minDuration={3200}
+          onFinished={() => setShowSplash(false)}
+        />
+      )}
+
       {/* Ambient Background Lighting */}
       <div className="ambient-glow-indigo"></div>
       <div className="ambient-glow-violet"></div>
@@ -886,7 +943,7 @@ _Please confirm your attendance!_`;
           </div>
           <button 
             onClick={handleLogout}
-            className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors flex items-center justify-center"
+            className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors flex items-center justify-center cursor-pointer"
             title="Logout"
           >
             <span className="material-symbols-outlined text-[20px]">logout</span>
@@ -898,8 +955,11 @@ _Please confirm your attendance!_`;
       <div className="ml-0 md:ml-64 flex flex-col flex-1 h-screen w-full max-w-full overflow-x-hidden">
         {/* TopNavBar */}
         <header className="hidden md:flex fixed top-0 right-0 left-64 h-20 bg-surface/60 backdrop-blur-md border-b border-outline-variant/10 shadow-sm z-40 px-stack-lg justify-between items-center transition-all duration-300">
-          <div className="flex items-center">
-            <PayswiffLogo size="sm" />
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-on-surface-variant bg-surface-container-high/60 px-3 py-1 rounded-full border border-outline-variant/20 hidden sm:inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              Operations Manager Authority
+            </span>
           </div>
           <div className="flex items-center gap-6">
             {/* Context Search Bar */}
@@ -1001,20 +1061,32 @@ _Please confirm your attendance!_`;
         <div className="flex-1 mt-0 md:mt-20 overflow-y-auto">
           
           {/* VIEW: ACTIVE RESERVATIONS & EXTENSION */}
-          {currentView === "active_reservations" && (
+          {currentView === "active_reservations" && (() => {
+            const isBookingMine = (b: any) => {
+              if (userId && b.userId && b.userId.toString() === userId.toString()) return true;
+              if (userEmail && b.bookerEmail && b.bookerEmail.toLowerCase() === userEmail.toLowerCase()) return true;
+              if (userName && b.booker && b.booker.toLowerCase().includes(userName.toLowerCase())) return true;
+              return false;
+            };
+            const myBookings = bookings.filter(isBookingMine);
+
+            return (
             <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex flex-col gap-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-2">
                 <div>
-                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface">Active Reservations</h1>
-                  <p className="font-body-md text-on-surface-variant mt-1">Confirmed workspace room schedules with manager meeting extension control.</p>
+                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-3xl">history</span>
+                    My Booking History
+                  </h1>
+                  <p className="font-body-md text-on-surface-variant mt-1">Confirmed workspace room schedules booked by you with meeting extension control.</p>
                 </div>
               </div>
 
-              {bookings.length === 0 ? (
+              {myBookings.length === 0 ? (
                 <div className="glass-panel rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
                   <span className="material-symbols-outlined text-outline text-5xl">event_busy</span>
-                  <h3 className="font-headline-md text-lg font-bold text-on-surface">No Active Reservations</h3>
-                  <p className="text-xs text-on-surface-variant max-w-sm">No active confirmed bookings exist in the system right now.</p>
+                  <h3 className="font-headline-md text-lg font-bold text-on-surface">No Reservations Found</h3>
+                  <p className="text-xs text-on-surface-variant max-w-sm">You do not have any confirmed room reservations in the system yet.</p>
                 </div>
               ) : (
                 <div className="glass-panel rounded-xl overflow-hidden shadow-lg border border-outline-variant/20">
@@ -1032,7 +1104,7 @@ _Please confirm your attendance!_`;
                         </tr>
                       </thead>
                       <tbody className="font-body-md text-sm divide-y divide-white/5">
-                        {bookings.map((booking) => (
+                        {myBookings.map((booking) => (
                           <tr key={booking.id} className="hover:bg-white/[0.01] transition-colors">
                             <td className="p-4 font-mono text-xs text-outline">{booking.id}</td>
                             <td className="p-4 font-bold text-on-surface">{booking.roomName}</td>
@@ -1041,10 +1113,18 @@ _Please confirm your attendance!_`;
                             </td>
                             <td className="p-4 text-on-surface-variant font-medium">{booking.title}</td>
                             <td className="p-4">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                Approved
-                              </span>
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                  Approved
+                                </span>
+                                {booking.extensionStatus === "Pending" && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/40 animate-pulse">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    +Ext ({booking.pendingExtensionMinutes || 30}m) Pending Admin
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-4">
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-xs font-semibold text-on-surface">
@@ -1053,15 +1133,40 @@ _Please confirm your attendance!_`;
                             </td>
                             <td className="p-4 text-right flex items-center justify-end gap-2">
                               <button
+                                onClick={() => handleRebookRoom(booking)}
+                                className="text-xs font-bold text-white bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 px-3 py-1.5 rounded-lg border border-red-500/30 transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                title={`Rebook ${booking.roomName}`}
+                              >
+                                <span className="material-symbols-outlined text-[15px]">event_repeat</span> Rebook
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTargetFeedbackBooking({
+                                    id: booking.id,
+                                    title: booking.title,
+                                    roomName: booking.roomName,
+                                    roomId: booking.roomId,
+                                  });
+                                  setIsFeedbackModalOpen(true);
+                                }}
+                                className="text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-1.5 rounded-lg border border-amber-500/40 transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                title="Give feedback & 5-star rating for this room"
+                              >
+                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                </svg>
+                                Rate
+                              </button>
+                              <button
                                 onClick={() => {
                                   const r = rooms.find(room => room.id === booking.roomId || room.name === booking.roomName);
                                   setTargetRoomHistory(r || { id: booking.roomId, name: booking.roomName, location: "Corporate Floor", seats: 10 });
                                   setIsRoomHistoryModalOpen(true);
                                 }}
-                                className="text-xs font-bold text-primary bg-primary/15 hover:bg-primary/25 px-2.5 py-1.5 rounded-lg border border-primary/30 transition-all flex items-center gap-1 shadow-sm"
+                                className="text-xs font-bold text-primary bg-primary/15 hover:bg-primary/25 px-2.5 py-1.5 rounded-lg border border-primary/30 transition-all flex items-center gap-1 shadow-sm cursor-pointer"
                                 title="View room utilization history and audit log"
                               >
-                                <span className="material-symbols-outlined text-[14px]">history</span> Room History
+                                <span className="material-symbols-outlined text-[14px]">history</span> History
                               </button>
                               <a
                                 href={getWhatsAppShareLink(booking)}
@@ -1074,7 +1179,7 @@ _Please confirm your attendance!_`;
                               </a>
                               <button 
                                 onClick={() => handleOpenExtendModal(booking)}
-                                className="text-xs font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-lg border border-amber-500/30 transition-all flex items-center gap-1 shadow-sm"
+                                className="text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 px-3 py-1.5 rounded-lg border border-amber-500/40 transition-all flex items-center gap-1 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
                                 title="Extend meeting duration & notify upcoming teams"
                               >
                                 <span className="material-symbols-outlined text-[14px]">update</span> Extend
@@ -1094,7 +1199,8 @@ _Please confirm your attendance!_`;
                 </div>
               )}
             </main>
-          )}
+            );
+          })()}
 
           {/* VIEW: APPROVAL QUEUE */}
           {currentView === "bookings" && (
@@ -1257,15 +1363,34 @@ _Please confirm your attendance!_`;
                   </div>
                   <p className="font-body-md text-on-surface-variant mt-1">Track and procure missing room equipment (HDMI cables, markers, adapters, remotes).</p>
                 </div>
-                <button 
-                  onClick={() => {
-                    if (rooms.length > 0) setNewSupplyRoomId(rooms[0].id);
-                    setIsAddSupplyModalOpen(true);
-                  }}
-                  className="px-4 py-2.5 btn-gradient-primary text-white font-bold text-sm rounded-xl flex items-center gap-2 shadow-lg hover:shadow-primary/20 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add_circle</span> Report Missing / Needed Item
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setTargetFeedbackBooking({
+                        id: "direct",
+                        title: "Facility Review",
+                        roomName: rooms.length > 0 ? rooms[0].name : "Meeting Room",
+                        roomId: rooms.length > 0 ? rooms[0].id : 1,
+                      });
+                      setIsFeedbackModalOpen(true);
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 font-bold text-sm flex items-center gap-2 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    Give Room Feedback
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (rooms.length > 0) setNewSupplyRoomId(rooms[0].id);
+                      setIsAddSupplyModalOpen(true);
+                    }}
+                    className="px-4 py-2.5 btn-gradient-primary text-white font-bold text-sm rounded-xl flex items-center gap-2 shadow-lg hover:shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add_circle</span> Report Missing / Needed Item
+                  </button>
+                </div>
               </div>
 
               {/* Status Filter Tabs */}
@@ -1344,41 +1469,14 @@ _Please confirm your attendance!_`;
                             </div>
                           </div>
 
-                          {/* Quick Action Status Cycle Buttons */}
-                          <div className="pt-3 border-t border-outline-variant/15 flex items-center justify-between gap-2">
-                            <div className="flex flex-wrap gap-1">
-                              {item.status !== 'To Buy' && (
-                                <button
-                                  onClick={() => handleUpdateSupplyStatus(item.id, 'To Buy')}
-                                  className="text-[11px] font-bold px-2 py-1 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
-                                >
-                                  Mark To Buy
-                                </button>
-                              )}
-                              {item.status !== 'Purchased' && (
-                                <button
-                                  onClick={() => handleUpdateSupplyStatus(item.id, 'Purchased')}
-                                  className="text-[11px] font-bold px-2 py-1 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-all"
-                                >
-                                  Mark Purchased
-                                </button>
-                              )}
-                              {item.status !== 'Replenished' && (
-                                <button
-                                  onClick={() => handleUpdateSupplyStatus(item.id, 'Replenished')}
-                                  className="text-[11px] font-bold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all"
-                                >
-                                  Mark Restocked
-                                </button>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => handleDeleteSupply(item.id)}
-                              className="p-1 text-outline hover:text-error hover:bg-error/10 rounded transition-colors"
-                              title="Delete report"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
+                          {/* Read-only Admin Procurement Note */}
+                          <div className="pt-3 border-t border-outline-variant/15 flex items-center justify-between text-[11px] text-on-surface-variant">
+                            <span className="flex items-center gap-1 text-outline font-medium">
+                              <span className="material-symbols-outlined text-[14px]">lock</span> Procurement & restocking managed by Admin
+                            </span>
+                            <span className="font-mono text-[10px] text-outline">
+                              {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""}
+                            </span>
                           </div>
                         </div>
                       );
@@ -1527,7 +1625,7 @@ _Please confirm your attendance!_`;
                     <div>
                       <h2 className="font-headline-lg text-2xl text-on-surface font-bold tracking-tight">Book {selectedRoom.name}</h2>
                       <p className="font-body-md text-xs text-on-surface-variant flex items-center gap-1 mt-1">
-                        <span className="material-symbols-outlined text-[18px]">event</span> Select date and time
+                        <span className="material-symbols-outlined text-[18px]">event</span> Select date and time ({upcoming6Days.length} Days Available This Month)
                       </p>
                     </div>
 
@@ -1541,24 +1639,24 @@ _Please confirm your attendance!_`;
                           </span>
                         </div>
                         <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
-                          {selectedDayItem.isToday ? "Today" : `+${selectedDayIndex} Day`}
+                          {selectedDayItem.isToday ? "Today" : `+${selectedDayIndex} Days`}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center px-1">
-                        <span className="font-label-sm text-xs text-outline font-semibold uppercase tracking-wider">Select Day (6-Day Window)</span>
+                        <span className="font-label-sm text-xs text-outline font-semibold uppercase tracking-wider">Select Day ({upcoming6Days.length} Days in {selectedDayItem.monthName})</span>
                         <span className="font-label-sm text-[11px] text-primary font-semibold">{getDateName(selectedDayItem)}</span>
                       </div>
 
-                      {/* 6-Day Date Scroll Reel Starting from Today */}
-                      <div className="grid grid-cols-6 gap-1.5 py-1">
+                      {/* Date Scroll Reel Starting from Today till End of Month */}
+                      <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
                         {upcoming6Days.map((d) => {
                           const isActive = selectedDayIndex === d.index;
                           return (
                             <button 
                               key={d.dateKey}
                               onClick={() => setSelectedDayIndex(d.index)}
-                              className={`flex flex-col items-center justify-center py-2.5 px-1 rounded-xl border transition-all duration-200 shrink-0 ${
+                              className={`flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border transition-all duration-200 shrink-0 min-w-[60px] cursor-pointer ${
                                 isActive 
                                   ? "bg-gradient-to-b from-primary-container/30 to-primary/20 border-2 border-primary text-primary shadow-lg font-bold scale-105"
                                   : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
@@ -1887,7 +1985,7 @@ _Please confirm your attendance!_`;
               </div>
 
               <p className="text-[11px] text-amber-300 leading-relaxed bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl mt-1">
-                ⚠️ <strong>Overrun Protection:</strong> Extending this meeting will recalculate spatial schedules and send automated email + in-app alerts to any conflicting upcoming teams.
+                🔒 <strong>Admin Authorization Required:</strong> Meeting extensions must be approved by the System Admin. Submitting this will alert the Admin for approval.
               </p>
             </div>
 
@@ -1905,7 +2003,7 @@ _Please confirm your attendance!_`;
                 disabled={isExtending}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-lg hover:shadow-amber-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
               >
-                {isExtending ? 'Updating Schedule...' : 'Confirm Extension'}
+                {isExtending ? 'Submitting to Admin...' : 'Request Admin Approval'}
               </button>
             </div>
           </div>
@@ -1970,7 +2068,6 @@ _Please confirm your attendance!_`;
                   <input
                     type="number"
                     min="1"
-                    max="100"
                     value={newSupplyQuantity}
                     onChange={(e) => setNewSupplyQuantity(parseInt(e.target.value, 10) || 1)}
                     className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl py-2.5 px-3 text-on-surface outline-none focus:border-primary font-medium"
@@ -1978,22 +2075,20 @@ _Please confirm your attendance!_`;
                   />
                 </div>
                 <div>
-                  <label className="block text-on-surface-variant font-semibold mb-1">Current Status</label>
+                  <label className="block text-on-surface-variant font-semibold mb-1">Initial Status</label>
                   <select
                     value={newSupplyStatus}
                     onChange={(e) => setNewSupplyStatus(e.target.value)}
                     className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl py-2.5 px-3 text-on-surface font-medium outline-none focus:border-primary"
                   >
-                    <option value="Missing" className="bg-surface-container-high">Missing</option>
-                    <option value="To Buy" className="bg-surface-container-high">To Buy</option>
-                    <option value="Purchased" className="bg-surface-container-high">Purchased</option>
-                    <option value="Replenished" className="bg-surface-container-high">Replenished</option>
+                    <option value="Missing">Missing</option>
+                    <option value="To Buy">To Buy</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-on-surface-variant font-semibold mb-1">Notes / Specifications (Optional)</label>
+                <label className="block text-on-surface-variant font-semibold mb-1">Notes / Context (Optional)</label>
                 <textarea
                   rows={2}
                   placeholder="e.g. Needs 3-meter USB-C to HDMI 2.0 cable for teleconference"
@@ -2076,7 +2171,14 @@ _Please confirm your attendance!_`;
           </div>
         </div>
       )}
+
+      {/* Post-Meeting 5-Star Feedback Modal */}
+      <MeetingFeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        booking={targetFeedbackBooking}
+        onFeedbackSubmitted={fetchData}
+      />
     </div>
   );
 }
-

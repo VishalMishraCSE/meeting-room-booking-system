@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { sendBookingConfirmationEmail, sendApprovalRequestEmail, sendBookingCancellationEmail } from '@/lib/mail';
@@ -291,7 +291,7 @@ export async function POST(request: Request) {
 
     // Broadcast automated WhatsApp message via Green API to designated chat numbers (You, Vishal, Malavika)
     const waText = 
-`🏢 *PAYSWIFF RESERVE: OFFICIAL MEETING INVITATION*
+`🏢 *PAYSWIFF MEETING ROOM: OFFICIAL MEETING INVITATION*
 
 📌 *Meeting Title:* ${title}
 🚪 *Facility Room:* ${room.name} (${room.location || 'Main Wing'})
@@ -362,16 +362,35 @@ export async function POST(request: Request) {
         data: {
           userId: user.id,
           title: 'Booking Request Submitted',
-          message: `Your request for ${room.name} (${title}) has been submitted and is pending manager approval.`,
+          message: `Your request for ${room.name} (${title}) has been submitted and is pending your manager's approval.`,
           type: 'warning',
         }
       }).catch((e: any) => console.error('Failed to create pending notification for booker:', e));
 
-      // Notify managers about the approval request
-      prisma.user.findMany({
-        where: { role: 'Manager', isActive: true }
-      }).then((managers: { id: number; email: string; name: string }[]) => {
-        for (const mgr of managers) {
+      // Look up booker's assigned manager to notify only their specific manager
+      prisma.user.findUnique({
+        where: { id: user.id },
+        include: { manager: true }
+      }).then(async (bookerWithManager) => {
+        let managersToNotify: { id: number; email: string; name: string }[] = [];
+
+        if (bookerWithManager?.manager && bookerWithManager.manager.isActive) {
+          managersToNotify.push({
+            id: bookerWithManager.manager.id,
+            email: bookerWithManager.manager.email,
+            name: bookerWithManager.manager.name,
+          });
+        } else {
+          // Fallback if no manager is assigned yet: fetch first active manager
+          const activeManagers = await prisma.user.findMany({
+            where: { role: 'Manager', isActive: true },
+            take: 1,
+            select: { id: true, email: true, name: true }
+          });
+          managersToNotify = activeManagers;
+        }
+
+        for (const mgr of managersToNotify) {
           sendApprovalRequestEmail(
             mgr.email,
             mgr.name,
@@ -386,13 +405,13 @@ export async function POST(request: Request) {
           (prisma as any).notification.create({
             data: {
               userId: mgr.id,
-              title: 'Pending Room Approval Request',
-              message: `${user.name} requested to book ${room.name} for "${title}" on ${start.toLocaleDateString()} at ${timeFormatted}.`,
+              title: 'Pending Team Approval Request',
+              message: `${user.name} (Your Team) requested to book ${room.name} for "${title}" on ${start.toLocaleDateString()} at ${timeFormatted}.`,
               type: 'info',
             }
           }).catch((e: any) => console.error(`Failed to create in-app notification for manager ${mgr.email}:`, e));
         }
-      }).catch((e: unknown) => console.error('Failed to fetch managers for notification:', e));
+      }).catch((e: unknown) => console.error('Failed to resolve manager for approval notification:', e));
     }
 
     return NextResponse.json(newBooking, { status: 201 });

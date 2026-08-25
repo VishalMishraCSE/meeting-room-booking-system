@@ -3,11 +3,16 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PayswiffLogo from "@/components/PayswiffLogo";
+import FlashScreen from "@/components/FlashScreen";
 
 export default function LoginPage() {
   const router = useRouter();
   const [authMode, setAuthMode] = useState<"signin" | "signup" | "forgot">("signin");
   
+  // Flash Screen State
+  const [showFlash, setShowFlash] = useState<boolean>(true);
+  const [flashMessage, setFlashMessage] = useState<string>("Initializing Corporate Portal...");
+
   // Sign In state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,7 +21,6 @@ export default function LoginPage() {
   const [signUpName, setSignUpName] = useState("");
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
-  const [signUpRole, setSignUpRole] = useState<"Employee" | "Manager" | "Admin">("Employee");
 
   // Account Recovery / Forgot Password state
   const [recoveryStep, setRecoveryStep] = useState<"request" | "verify" | "reset">("request");
@@ -62,6 +66,8 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setErrorMessage("");
     setSuccessMessage("");
+    setFlashMessage("Authenticating Credentials...");
+    setShowFlash(true);
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -84,10 +90,15 @@ export default function LoginPage() {
       localStorage.setItem("userEmail", data.user.email);
       localStorage.setItem("userId", data.user.id.toString());
 
-      // Hard redirect using window.location.href for guaranteed cross-device navigation
-      const targetPath = data.user.role === "admin" ? "/admin" : data.user.role === "manager" ? "/manager" : "/";
-      window.location.href = targetPath;
+      setFlashMessage(`Welcome back, ${data.user.name}! Redirecting to workspace...`);
+
+      // Smooth delay for luxury flash transition
+      setTimeout(() => {
+        const targetPath = data.user.role === "admin" ? "/admin" : data.user.role === "manager" ? "/manager" : "/";
+        window.location.href = targetPath;
+      }, 500);
     } catch (err: any) {
+      setShowFlash(false);
       setErrorMessage(err.message || "Invalid corporate credentials.");
       setIsSubmitting(false);
     }
@@ -109,7 +120,7 @@ export default function LoginPage() {
           name: signUpName.trim(),
           email: signUpEmail.trim(),
           password: signUpPassword,
-          role: signUpRole,
+          role: "Employee",
         }),
       });
 
@@ -286,6 +297,14 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex w-full bg-background text-on-surface relative overflow-hidden select-none">
+      {/* Flash Screen Transition Overlay */}
+      <FlashScreen
+        show={showFlash}
+        message={flashMessage}
+        minDuration={3200}
+        onFinished={() => setShowFlash(false)}
+      />
+
       {/* Theme Toggle Button */}
       <button 
         onClick={toggleTheme}
@@ -328,11 +347,11 @@ export default function LoginPage() {
           <div 
             className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 ease-out scale-105 hover:scale-100" 
             style={{ 
-              backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAcpZdST_Gu-nhdwmNspGHaLSPeFLrDt7kc66i7sh1pznvCa-CFssHN63l7_dFAlci2UpoFTkOPnLk_-vl5WOnez39MDKTxnAFyeYssa3-o4bAUCch52TW7YK4UU5JmZgxgVnNRgUhcCDWFNWeuoZ1gD6hTjNr0KU1H8fgB9tqiDj4DLuMdbzVU0XF7mK6FnXLVpbM7PXktF1iMFfyHfWGq-PIBB82jayCbs7jFJpRfAay2G_E1H0WZ4mZKe1ww3BSe-FzTfIsyZtrc')" 
+              backgroundImage: "url('/login-bg.jpg')" 
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-background/80 to-background/30 mix-blend-multiply"></div>
-            <div className="absolute inset-0 bg-primary/10 mix-blend-overlay"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-white/20 via-white/5 to-transparent"></div>
+            <div className="absolute inset-0 bg-primary/5 mix-blend-overlay"></div>
           </div>
 
           <div className="relative z-10 flex flex-col justify-start p-12 w-full">
@@ -584,29 +603,6 @@ export default function LoginPage() {
                         value={signUpPassword}
                         onChange={(e) => setSignUpPassword(e.target.value)}
                       />
-                    </div>
-                  </div>
-
-                  {/* Account Role Selection */}
-                  <div className="space-y-1.5">
-                    <label className="font-label-md text-xs text-on-surface-variant block font-medium">
-                      Account Role
-                    </label>
-                    <div className="grid grid-cols-3 gap-2 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl p-1">
-                      {(["Employee", "Manager", "Admin"] as const).map((r) => (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => setSignUpRole(r)}
-                          className={`py-2 px-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
-                            signUpRole === r
-                              ? "bg-red-600/20 text-red-500 border border-red-500/40 shadow-sm"
-                              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/40"
-                          }`}
-                        >
-                          {r}
-                        </button>
-                      ))}
                     </div>
                   </div>
 

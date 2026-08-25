@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import PayswiffLogo from "@/components/PayswiffLogo";
+import MeetingFeedbackModal from "@/components/MeetingFeedbackModal";
+import FlashScreen from "@/components/FlashScreen";
 
 interface Room {
   id: string;
@@ -16,6 +18,7 @@ interface Room {
 
 interface Booking {
   id: string;
+  userId?: string;
   roomId: string;
   roomName: string;
   month: number;
@@ -32,15 +35,30 @@ interface Booking {
   bookerEmail: string;
   attendees: string[];
   status: string;
+  pendingExtensionMinutes?: number;
+  extensionReason?: string;
+  extensionStatus?: string;
 }
 
 export default function BookingDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("Alex Rivers");
   const [userEmail, setUserEmail] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("Employee");
   const [currentView, setCurrentView] = useState<string>("bookings"); // "bookings" | "rooms"
+
+  // Post-meeting 5-star feedback state
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState<boolean>(false);
+  const [targetFeedbackBooking, setTargetFeedbackBooking] = useState<any>(null);
+
+  // Meeting extension modal state
+  const [isExtendModalOpen, setIsExtendModalOpen] = useState<boolean>(false);
+  const [targetExtendBooking, setTargetExtendBooking] = useState<any>(null);
+  const [customExtensionMinutes, setCustomExtensionMinutes] = useState<string>("30");
+  const [isExtending, setIsExtending] = useState<boolean>(false);
 
   // Unified reactive room state with 6 Conference Rooms
   const [rooms, setRooms] = useState<Room[]>([
@@ -107,13 +125,19 @@ export default function BookingDashboard() {
   const [scopeFilter, setScopeFilter] = useState<"all" | "my">("all");
   const [reservationSearch, setReservationSearch] = useState<string>("");
 
-  // 6 Days Real-World Date Generation from Today
+  // Real-World Date Generation from Today to End of Current Month
   const upcoming6Days = useMemo(() => {
     const list = [];
     const base = new Date();
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
+    const currentYear = base.getFullYear();
+    const currentMonth = base.getMonth();
+    const todayDate = base.getDate();
+    // Calculate total days remaining in the current month starting from today
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const totalDaysRemaining = lastDayOfMonth - todayDate + 1;
+
+    for (let i = 0; i < totalDaysRemaining; i++) {
+      const d = new Date(currentYear, currentMonth, todayDate + i);
       const isToday = i === 0;
       const dayNum = d.getDate();
       const month = d.getMonth();
@@ -251,6 +275,7 @@ export default function BookingDashboard() {
 
           return {
             id: dbB.id.toString(),
+            userId: dbB.userId?.toString() || (dbB.user?.id ? dbB.user.id.toString() : ""),
             roomId: dbB.roomId.toString(),
             roomName: dbB.room?.name || "Unknown Room",
             month: start.getMonth(),
@@ -266,7 +291,10 @@ export default function BookingDashboard() {
             booker: dbB.user?.name || "Unknown",
             bookerEmail: dbB.user?.email || "",
             attendees: dbB.attendees?.map((a: any) => a.email) || [],
-            status: dbB.status
+            status: dbB.status,
+            pendingExtensionMinutes: dbB.pendingExtensionMinutes,
+            extensionReason: dbB.extensionReason,
+            extensionStatus: dbB.extensionStatus
           };
         });
         setBookings(mappedBookings);
@@ -284,6 +312,21 @@ export default function BookingDashboard() {
           setUnreadNotificationsCount(data.unreadCount || 0);
         }
       }).catch(e => console.error("Failed to fetch notifications:", e));
+
+      // Check for completed meetings needing feedback
+      fetch("/api/feedback?pendingOnly=true").then(res => res.json()).then(data => {
+        if (data && Array.isArray(data.pendingFeedbacks) && data.pendingFeedbacks.length > 0) {
+          const first = data.pendingFeedbacks[0];
+          setTargetFeedbackBooking({
+            id: first.id,
+            title: first.title,
+            roomName: first.room?.name || "Meeting Room",
+            roomId: first.roomId,
+            date: first.startTime ? new Date(first.startTime).toLocaleDateString() : "",
+          });
+          setIsFeedbackModalOpen(true);
+        }
+      }).catch(e => console.error("Failed to check feedback requests:", e));
     } catch (err) {
       console.error("Failed to fetch data:", err);
     }
@@ -294,6 +337,7 @@ export default function BookingDashboard() {
     const storedRole = localStorage.getItem("userRole");
     const storedName = localStorage.getItem("userName");
     const storedEmail = localStorage.getItem("userEmail");
+    const storedUserId = localStorage.getItem("userId");
     if (!storedRole) {
       router.replace("/login");
       return;
@@ -307,6 +351,7 @@ export default function BookingDashboard() {
       return;
     }
     setLoading(false);
+    if (storedUserId) setUserId(storedUserId);
     if (storedName) setUserName(storedName);
     if (storedEmail) setUserEmail(storedEmail);
     setUserRole(storedRole.charAt(0).toUpperCase() + storedRole.slice(1));
@@ -348,7 +393,7 @@ export default function BookingDashboard() {
       : 'All Team Members';
       
     const text = 
-`🏢 *PAYSWIFF RESERVE: OFFICIAL MEETING INVITATION*
+`🏢 *PAYSWIFF MEETING ROOM: OFFICIAL MEETING INVITATION*
 
 📌 *Meeting Title:* ${booking.title}
 🚪 *Facility Room:* ${booking.roomName}
@@ -501,6 +546,44 @@ _Please confirm your attendance!_`;
     }
   };
 
+  const handleRebookRoom = (booking: any) => {
+    setSelectedRoomId(booking.roomId.toString());
+    if (booking.title) setMeetingTitle(booking.title);
+    setCurrentView("rooms");
+  };
+
+  const handleOpenExtendModal = (booking: any) => {
+    setTargetExtendBooking(booking);
+    setCustomExtensionMinutes("30");
+    setIsExtendModalOpen(true);
+  };
+
+  const handleExecuteExtend = async () => {
+    if (!targetExtendBooking || isExtending) return;
+    const mins = parseInt(customExtensionMinutes, 10);
+    if (isNaN(mins) || mins <= 0) {
+      alert("Please enter a valid extension duration in minutes.");
+      return;
+    }
+    setIsExtending(true);
+    try {
+      const res = await fetch(`/api/bookings/${targetExtendBooking.id}/extend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extensionMinutes: mins }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to request meeting extension");
+      alert(data.message || "Meeting extension requested! Awaiting Admin Approval.");
+      setIsExtendModalOpen(false);
+      await fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsExtending(false);
+    }
+  };
+
   const filteredRooms = useMemo(() => {
     return rooms.filter(room => {
       const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -521,15 +604,19 @@ _Please confirm your attendance!_`;
     });
   }, [rooms, searchQuery, capacityFilter, amenitiesFilter]);
 
-  // Filtered reservations list for the Reservations table
+  // Helper to check if booking was created by current logged-in user
+  const isBookingMine = (b: any) => {
+    if (userId && b.userId && b.userId.toString() === userId.toString()) return true;
+    if (userEmail && b.bookerEmail && b.bookerEmail.toLowerCase() === userEmail.toLowerCase()) return true;
+    if (userName && b.booker && b.booker.toLowerCase().includes(userName.toLowerCase())) return true;
+    return false;
+  };
+
+  // Filtered reservations list — strictly user's own booking history
   const filteredBookings = useMemo(() => {
     return bookings.filter(b => {
-      // Scope filter: My bookings vs All
-      if (scopeFilter === "my") {
-        const isMine = (userEmail && b.bookerEmail.toLowerCase() === userEmail.toLowerCase()) ||
-                       (userName && b.booker.toLowerCase().includes(userName.toLowerCase()));
-        if (!isMine) return false;
-      }
+      // Must be current user's booking only
+      if (!isBookingMine(b)) return false;
 
       // Status filter
       if (statusFilter === "Approved") {
@@ -545,28 +632,25 @@ _Please confirm your attendance!_`;
         const q = reservationSearch.toLowerCase();
         const matchesRoom = b.roomName.toLowerCase().includes(q);
         const matchesTitle = b.title.toLowerCase().includes(q);
-        const matchesBooker = b.booker.toLowerCase().includes(q);
         const matchesId = b.id.toString().includes(q);
-        if (!matchesRoom && !matchesTitle && !matchesBooker && !matchesId) return false;
+        if (!matchesRoom && !matchesTitle && !matchesId) return false;
       }
 
       return true;
     });
-  }, [bookings, scopeFilter, statusFilter, reservationSearch, userEmail, userName]);
+  }, [bookings, statusFilter, reservationSearch, userId, userEmail, userName]);
 
-  // Counts for each status category
+  // Counts for each status category (scoped strictly to current user)
   const statusCounts = useMemo(() => {
-    const baseList = scopeFilter === "my" 
-      ? bookings.filter(b => (userEmail && b.bookerEmail.toLowerCase() === userEmail.toLowerCase()) || (userName && b.booker.toLowerCase().includes(userName.toLowerCase())))
-      : bookings;
+    const myList = bookings.filter(isBookingMine);
 
     return {
-      all: baseList.length,
-      approved: baseList.filter(b => b.status === "Confirmed").length,
-      pending: baseList.filter(b => b.status === "Pending").length,
-      cancelled: baseList.filter(b => b.status === "Cancelled").length,
+      all: myList.length,
+      approved: myList.filter(b => b.status === "Confirmed").length,
+      pending: myList.filter(b => b.status === "Pending").length,
+      cancelled: myList.filter(b => b.status === "Cancelled").length,
     };
-  }, [bookings, scopeFilter, userEmail, userName]);
+  }, [bookings, userId, userEmail, userName]);
 
   const getDateName = (dayItem: typeof upcoming6Days[0]) => {
     if (!dayItem) return "Selected Date";
@@ -600,19 +684,19 @@ _Please confirm your attendance!_`;
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background text-on-surface flex items-center justify-center font-bold text-lg">
-        <div className="flex flex-col items-center gap-4">
-          <span className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></span>
-          <span>Redirecting to login...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 flex overflow-hidden bg-background text-on-surface">
+    <div className="flex-1 flex overflow-hidden bg-background text-on-surface relative">
+      {/* Guaranteed Full Splash Animation Overlay */}
+      {showSplash && (
+        <FlashScreen
+          show={showSplash}
+          message="Authenticating Workspace Session..."
+          subMessage="Connecting to Payswiff Meeting Platform"
+          minDuration={3200}
+          onFinished={() => setShowSplash(false)}
+        />
+      )}
+
       {/* Ambient Background Lighting */}
       <div className="ambient-glow-indigo"></div>
       <div className="ambient-glow-violet"></div>
@@ -659,7 +743,7 @@ _Please confirm your attendance!_`;
           </div>
           <button 
             onClick={handleLogout}
-            className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors flex items-center justify-center"
+            className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors flex items-center justify-center cursor-pointer"
             title="Logout"
           >
             <span className="material-symbols-outlined text-[20px]">logout</span>
@@ -671,8 +755,11 @@ _Please confirm your attendance!_`;
       <div className="ml-0 md:ml-64 flex flex-col flex-1 h-screen w-full max-w-full overflow-x-hidden">
         {/* TopNavBar */}
         <header className="hidden md:flex fixed top-0 right-0 left-64 h-20 bg-surface/60 backdrop-blur-md border-b border-outline-variant/10 shadow-sm z-40 px-stack-lg justify-between items-center transition-all duration-300">
-          <div className="flex items-center">
-            <PayswiffLogo size="sm" />
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-on-surface-variant bg-surface-container-high/60 px-3 py-1 rounded-full border border-outline-variant/20 hidden sm:inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              Workspace Active
+            </span>
           </div>
           <div className="flex items-center gap-6">
             {currentView === "rooms" && (
@@ -773,36 +860,15 @@ _Please confirm your attendance!_`;
               {/* Header with Title and New Booking Button */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-6">
                 <div>
-                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface">Reservations</h1>
-                  <p className="font-body-md text-on-surface-variant mt-1">Confirmed, pending, and cancelled room schedules in the workspace.</p>
+                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-3xl">history</span>
+                    My Booking History
+                  </h1>
+                  <p className="font-body-md text-on-surface-variant mt-1">Confirmed, pending, and cancelled room schedules booked by you.</p>
                 </div>
                 
                 {/* Controls Area: Status Filter Dropdown & New Booking Button */}
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* Scope Selector: All vs My Bookings */}
-                  <div className="flex items-center bg-surface-container-high/60 border border-outline-variant/30 rounded-xl p-1 shadow-inner">
-                    <button
-                      onClick={() => setScopeFilter("all")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        scopeFilter === "all"
-                          ? "bg-primary text-white shadow-sm"
-                          : "text-on-surface-variant hover:text-on-surface"
-                      }`}
-                    >
-                      All Reservations
-                    </button>
-                    <button
-                      onClick={() => setScopeFilter("my")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        scopeFilter === "my"
-                          ? "bg-primary text-white shadow-sm"
-                          : "text-on-surface-variant hover:text-on-surface"
-                      }`}
-                    >
-                      My Bookings
-                    </button>
-                  </div>
-
                   {/* Status Filter Dropdown */}
                   <div className="relative flex items-center">
                     <span className="material-symbols-outlined absolute left-3 text-primary text-[18px] pointer-events-none">filter_list</span>
@@ -953,16 +1019,24 @@ _Please confirm your attendance!_`;
                               </td>
                               <td className="p-4 text-on-surface-variant font-medium">{booking.title}</td>
                               <td className="p-4">
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                                  isConfirmed 
-                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                                    : isPending
-                                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                }`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${isConfirmed ? 'bg-emerald-400' : isPending ? 'bg-amber-400' : 'bg-red-400'}`}></span>
-                                  {isConfirmed ? 'Approved' : isPending ? 'Pending Approval' : 'Cancelled'}
-                                </span>
+                                <div className="flex flex-col gap-1 items-start">
+                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                                    isConfirmed 
+                                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                      : isPending
+                                        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40'
+                                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                  }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isConfirmed ? 'bg-emerald-400' : isPending ? 'bg-amber-500' : 'bg-red-400'}`}></span>
+                                    {isConfirmed ? 'Approved' : isPending ? 'Pending Approval' : 'Cancelled'}
+                                  </span>
+                                  {booking.extensionStatus === "Pending" && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/40 animate-pulse">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                      +Ext ({booking.pendingExtensionMinutes || 30}m) Pending Admin
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-4">
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-xs font-semibold text-on-surface">
@@ -970,8 +1044,40 @@ _Please confirm your attendance!_`;
                                 </span>
                               </td>
                               <td className="p-4 text-right flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleRebookRoom(booking)}
+                                  className="text-xs font-bold text-white bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 px-3 py-1.5 rounded-lg border border-red-500/30 transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                  title={`Rebook ${booking.roomName}`}
+                                >
+                                  <span className="material-symbols-outlined text-[15px]">event_repeat</span> Rebook
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setTargetFeedbackBooking({
+                                      id: booking.id,
+                                      title: booking.title,
+                                      roomName: booking.roomName,
+                                      roomId: booking.roomId,
+                                    });
+                                    setIsFeedbackModalOpen(true);
+                                  }}
+                                  className="text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-1.5 rounded-lg border border-amber-500/40 transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                  title="Give feedback & 5-star rating for this room"
+                                >
+                                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                  </svg>
+                                  Rate
+                                </button>
                                 {!isCancelled ? (
                                   <>
+                                    <button 
+                                      onClick={() => handleOpenExtendModal(booking)}
+                                      className="text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 px-3 py-1.5 rounded-lg border border-amber-500/40 transition-all flex items-center gap-1 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                      title="Request meeting extension from Admin"
+                                    >
+                                      <span className="material-symbols-outlined text-[14px]">update</span> Extend
+                                    </button>
                                     <a
                                       href={getWhatsAppShareLink(booking)}
                                       target="_blank"
@@ -990,7 +1096,7 @@ _Please confirm your attendance!_`;
                                   </>
                                 ) : (
                                   <span className="text-[11px] font-semibold text-outline italic px-2 py-1">
-                                    Reservation Cancelled
+                                    Cancelled
                                   </span>
                                 )}
                               </td>
@@ -1134,7 +1240,7 @@ _Please confirm your attendance!_`;
                     <div>
                       <h2 className="font-headline-lg text-2xl text-on-surface font-bold tracking-tight">Book {selectedRoom.name}</h2>
                       <p className="font-body-md text-xs text-on-surface-variant flex items-center gap-1 mt-1">
-                        <span className="material-symbols-outlined text-[18px]">event</span> Select date and time (6 Days Available)
+                        <span className="material-symbols-outlined text-[18px]">event</span> Select date and time ({upcoming6Days.length} Days Available This Month)
                       </p>
                     </div>
 
@@ -1148,24 +1254,24 @@ _Please confirm your attendance!_`;
                           </span>
                         </div>
                         <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
-                          {selectedDayItem.isToday ? "Today" : `+${selectedDayIndex} Day`}
+                          {selectedDayItem.isToday ? "Today" : `+${selectedDayIndex} Days`}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center px-1">
-                        <span className="font-label-sm text-xs text-outline font-semibold uppercase tracking-wider">Select Day (6-Day Window)</span>
+                        <span className="font-label-sm text-xs text-outline font-semibold uppercase tracking-wider">Select Day ({upcoming6Days.length} Days in {selectedDayItem.monthName})</span>
                         <span className="font-label-sm text-[11px] text-primary font-semibold">{getDateName(selectedDayItem)}</span>
                       </div>
 
-                      {/* 6-Day Date Scroll Reel Starting from Today */}
-                      <div className="grid grid-cols-6 gap-1.5 py-1">
+                      {/* Date Scroll Reel Starting from Today till End of Month */}
+                      <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
                         {upcoming6Days.map((d) => {
                           const isActive = selectedDayIndex === d.index;
                           return (
                             <button 
                               key={d.dateKey}
                               onClick={() => setSelectedDayIndex(d.index)}
-                              className={`flex flex-col items-center justify-center py-2.5 px-1 rounded-xl border transition-all duration-200 shrink-0 ${
+                              className={`flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border transition-all duration-200 shrink-0 min-w-[60px] cursor-pointer ${
                                 isActive 
                                   ? "bg-gradient-to-b from-primary-container/30 to-primary/20 border-2 border-primary text-primary shadow-lg font-bold scale-105"
                                   : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
@@ -1521,6 +1627,90 @@ _Please confirm your attendance!_`;
           </div>
         </div>
       )}
+
+      {/* Custom Meeting Extension Modal */}
+      {isExtendModalOpen && targetExtendBooking && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-container-high border border-outline-variant/30 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-5 relative">
+            <div className="flex justify-between items-start border-b border-outline-variant/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-amber-400 text-2xl">update</span>
+                <div>
+                  <h3 className="font-headline-md text-base font-bold text-on-surface">Request Room Extension</h3>
+                  <p className="text-xs text-on-surface-variant">{targetExtendBooking.roomName} • {targetExtendBooking.title}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsExtendModalOpen(false)} className="text-outline hover:text-on-surface text-lg font-bold">✕</button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-semibold text-outline uppercase tracking-wider">Quick Presets</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[15, 30, 60, 120].map(mins => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setCustomExtensionMinutes(mins.toString())}
+                    className={`py-2 rounded-xl border text-xs font-bold transition-all ${
+                      customExtensionMinutes === mins.toString()
+                        ? 'bg-amber-500 text-white border-amber-400 shadow-lg scale-105'
+                        : 'bg-surface-container-highest/50 border-outline-variant/30 text-on-surface hover:border-amber-500/50'
+                    }`}
+                  >
+                    +{mins >= 60 ? `${mins/60}h` : `${mins}m`}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative mt-2">
+                <label className="absolute -top-2 left-3 bg-surface-container-high px-1 text-[10px] text-amber-400 font-semibold z-10">Custom Extension Duration</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="9000"
+                    placeholder="e.g. 45 or 150"
+                    value={customExtensionMinutes}
+                    onChange={(e) => setCustomExtensionMinutes(e.target.value)}
+                    className="w-full bg-surface-container-highest/30 border border-amber-500/40 rounded-xl py-2.5 px-3 text-sm text-on-surface focus:outline-none focus:border-amber-400 font-semibold shadow-inner"
+                  />
+                  <span className="text-xs font-semibold text-outline shrink-0">Minutes</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-amber-300 leading-relaxed bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl mt-1">
+                🔒 <strong>Admin Authorization Required:</strong> Meeting extensions must be approved by the System Admin. Submitting this will alert the Admin for approval.
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-2">
+              <button
+                type="button"
+                onClick={() => setIsExtendModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-outline-variant/30 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-highest"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteExtend}
+                disabled={isExtending}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-lg hover:shadow-amber-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isExtending ? 'Submitting to Admin...' : 'Request Admin Approval'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-Meeting 5-Star Feedback Modal */}
+      <MeetingFeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        booking={targetFeedbackBooking}
+        onFeedbackSubmitted={fetchData}
+      />
     </div>
   );
 }

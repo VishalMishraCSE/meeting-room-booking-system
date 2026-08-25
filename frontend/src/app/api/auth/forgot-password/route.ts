@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendEmail } from '@/lib/mail';
 import { saveRecoveryOtp } from '@/lib/recoveryStore';
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
           <h3 style="margin-top: 0; color: #f8fafc; font-size: 16px; font-weight: 700;">Account Recovery Security Code</h3>
           <p style="font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 18px;">
             Hello <strong style="color: #ffffff;">${user.name}</strong>,<br/>
-            A request was received to reset your password or update your username for your Payswiff Reserve account. Use the one-time security verification code below:
+            A request was received to reset your password or update your username for your PAYSWIFF MEETING ROOM account. Use the one-time security verification code below:
           </p>
 
           <div style="text-align: center; margin: 24px 0;">
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
     const emailSent = await sendEmail({
       to: normalizedEmail,
-      subject: `Payswiff Reserve | Security Code: ${otp}`,
+      subject: `PAYSWIFF MEETING ROOM | Security Code: ${otp}`,
       html: emailHtml,
     });
 

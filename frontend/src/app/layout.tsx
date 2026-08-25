@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Payswiff Reserve | Corporate Spatial Management",
+  title: "Payswiff Meeting Room | Corporate Booking Platform",
   description: "Enterprise Room Reservation & Spatial Intelligence Platform",
   icons: {
     icon: "/Payswiff-Logo.svg",

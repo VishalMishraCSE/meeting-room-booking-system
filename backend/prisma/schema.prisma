@@ -16,9 +16,13 @@ model User {
   isActive     Boolean    @default(true)
   departmentId Int?
   department   Department? @relation(fields: [departmentId], references: [id])
+  managerId    Int?
+  manager      User?       @relation("ManagerEmployees", fields: [managerId], references: [id])
+  employees    User[]      @relation("ManagerEmployees")
   bookings     Booking[]
   favorites    Favorite[]
   notifications Notification[]
+  feedbacks    MeetingFeedback[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -61,6 +65,7 @@ model Room {
   photos       RoomPhoto[]
   favorites    Favorite[]
   supplies     RoomSupply[]
+  feedbacks    MeetingFeedback[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -88,22 +93,26 @@ model RoomPhoto {
 }
 
 model Booking {
-  id             Int              @id @default(autoincrement())
-  userId         Int
-  user           User             @relation(fields: [userId], references: [id])
-  roomId         Int
-  room           Room             @relation(fields: [roomId], references: [id])
-  startTime      DateTime
-  endTime        DateTime
-  title          String
-  agenda         String?
-  status         String           @default("Confirmed") // Pending, Confirmed, Cancelled
-  recurrenceRule String?          // For recurring meetings
-  checkedIn      Boolean          @default(false)
-  attendees      Attendee[]
-  history        BookingHistory[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id                      Int              @id @default(autoincrement())
+  userId                  Int
+  user                    User             @relation(fields: [userId], references: [id])
+  roomId                  Int
+  room                    Room             @relation(fields: [roomId], references: [id])
+  startTime               DateTime
+  endTime                 DateTime
+  title                   String
+  agenda                  String?
+  status                  String           @default("Confirmed") // Pending, Confirmed, Cancelled
+  recurrenceRule          String?          // For recurring meetings
+  checkedIn               Boolean          @default(false)
+  pendingExtensionMinutes Int?             // e.g. 15, 30, 45, 60
+  extensionReason         String?
+  extensionStatus         String?          // Pending, Approved, Rejected
+  attendees               Attendee[]
+  history                 BookingHistory[]
+  feedbacks               MeetingFeedback[]
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
 
   @@index([roomId])
   @@index([userId])
@@ -175,4 +184,22 @@ model RoomSupply {
 
   @@index([roomId])
   @@map("room_supplies")
+}
+
+model MeetingFeedback {
+  id        Int      @id @default(autoincrement())
+  bookingId Int
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId    Int
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  rating    Int      // 1 to 5 stars
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([bookingId, userId])
+  @@index([roomId])
+  @@index([userId])
+  @@map("meeting_feedbacks")
 }
