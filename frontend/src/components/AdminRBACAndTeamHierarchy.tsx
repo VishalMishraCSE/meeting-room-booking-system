@@ -250,10 +250,10 @@ export default function AdminRBACAndTeamHierarchy({
             </span>
             <div>
               <h2 className="text-xl font-bold text-on-surface tracking-tight">
-                Team Hierarchy & RBAC Governance
+                Team Hierarchy & Permissions
               </h2>
               <p className="text-xs text-on-surface-variant">
-                Manage managerial reporting trees, role promotions, and enterprise capability matrix.
+                Manage managerial reporting trees, role promotions, and enterprise capability permissions.
               </p>
             </div>
           </div>
@@ -281,7 +281,7 @@ export default function AdminRBACAndTeamHierarchy({
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">shield</span>
-            Permission Matrix (RBAC)
+            Permissions
           </button>
         </div>
       </div>
@@ -580,10 +580,10 @@ export default function AdminRBACAndTeamHierarchy({
             <div>
               <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
                 <span className="material-symbols-outlined text-red-500">lock_open</span>
-                Enterprise Role Capability Matrix
+                Role Permissions & Access Control
               </h3>
               <p className="text-xs text-on-surface-variant">
-                Toggle specific system permissions for each role. Changes apply live across active sessions.
+                Toggle specific capabilities for each role. Changes apply live across active user sessions.
               </p>
             </div>
             <span className="text-[11px] text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full font-semibold border border-emerald-500/20 flex items-center gap-1">

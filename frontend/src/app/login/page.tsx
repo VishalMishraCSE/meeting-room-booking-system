@@ -17,10 +17,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   
+  // Sign In password visibility
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+
   // Sign Up state
   const [signUpName, setSignUpName] = useState("");
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
   const [signUpRole, setSignUpRole] = useState<"Employee" | "Manager">("Employee");
   const [selectedManagerId, setSelectedManagerId] = useState<string>("");
   const [availableManagers, setAvailableManagers] = useState<Array<{ id: number; name: string; email: string; department: string; employeeCount: number }>>([]);
@@ -31,7 +35,9 @@ export default function LoginPage() {
   const [recoveryOtp, setRecoveryOtp] = useState("");
   const [recoveryNewName, setRecoveryNewName] = useState("");
   const [recoveryNewPassword, setRecoveryNewPassword] = useState("");
+  const [showRecoveryNewPassword, setShowRecoveryNewPassword] = useState(false);
   const [recoveryConfirmPassword, setRecoveryConfirmPassword] = useState("");
+  const [showRecoveryConfirmPassword, setShowRecoveryConfirmPassword] = useState(false);
   const [recoveryCurrentName, setRecoveryCurrentName] = useState("");
 
   const [rememberMe, setRememberMe] = useState(true);
@@ -501,14 +507,24 @@ export default function LoginPage() {
                         <span className="material-symbols-outlined text-lg">lock</span>
                       </div>
                       <input 
-                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                        className="w-full pl-10 pr-11 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                         id="password" 
                         placeholder="••••••••" 
                         required 
-                        type="password"
+                        type={showSignInPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowSignInPassword(!showSignInPassword)}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-outline hover:text-red-500 transition-colors cursor-pointer"
+                        title={showSignInPassword ? "Hide password" : "Show password"}
+                      >
+                        <span className="material-symbols-outlined text-lg">
+                          {showSignInPassword ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
                     </div>
                   </div>
 
@@ -640,7 +656,7 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* Reporting Manager Dropdown (When signing up as an Employee) */}
+                  {/* Reporting Manager Dropdown (Clean Names Only) */}
                   {signUpRole === "Employee" && (
                     <div className="space-y-1.5">
                       <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="selectedManager">
@@ -657,11 +673,14 @@ export default function LoginPage() {
                           className="w-full pl-10 pr-8 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner appearance-none cursor-pointer"
                         >
                           <option value="">Auto-Assign to Available Team Lead</option>
-                          {availableManagers.map((mgr) => (
-                            <option key={mgr.id} value={mgr.id}>
-                              {mgr.name} ({mgr.department} · {mgr.employeeCount} reports)
-                            </option>
-                          ))}
+                          {availableManagers.map((mgr) => {
+                            const cleanName = mgr.name.replace(/\s*\(Manager\)\s*/gi, "").trim();
+                            return (
+                              <option key={mgr.id} value={mgr.id}>
+                                {cleanName}
+                              </option>
+                            );
+                          })}
                         </select>
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-outline">
                           <span className="material-symbols-outlined text-base">expand_more</span>
@@ -673,13 +692,20 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  {/* Manager Registration Verification Notice */}
+                  {/* High-Contrast Manager Registration Verification Notice */}
                   {signUpRole === "Manager" && (
-                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5">
-                      <span className="material-symbols-outlined text-amber-500 text-base mt-0.5 shrink-0">verified_user</span>
-                      <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                        <strong>Administrative Authorization Required:</strong> Manager accounts have room approval authority. After sign-up, a SysAdmin will verify your account before you can sign in.
-                      </p>
+                    <div className="p-3.5 rounded-xl bg-amber-500/15 border-2 border-amber-500/50 dark:bg-amber-500/20 dark:border-amber-500/40 flex items-start gap-3 shadow-sm">
+                      <span className="material-symbols-outlined text-amber-700 dark:text-amber-400 text-lg mt-0.5 shrink-0">
+                        verified_user
+                      </span>
+                      <div>
+                        <h5 className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                          Administrative Authorization Required
+                        </h5>
+                        <p className="text-[11px] text-amber-900/90 dark:text-amber-300/90 leading-relaxed mt-0.5">
+                          Manager accounts have approval authority. After sign-up, a SysAdmin will verify and activate your account before you can sign in.
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -692,14 +718,24 @@ export default function LoginPage() {
                         <span className="material-symbols-outlined text-lg">lock</span>
                       </div>
                       <input 
-                        className="w-full pl-10 pr-4 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                        className="w-full pl-10 pr-11 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                         id="signUpPassword" 
                         placeholder="At least 6 characters" 
                         required 
-                        type="password"
+                        type={showSignUpPassword ? "text" : "password"}
                         value={signUpPassword}
                         onChange={(e) => setSignUpPassword(e.target.value)}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-outline hover:text-red-500 transition-colors cursor-pointer"
+                        title={showSignUpPassword ? "Hide password" : "Show password"}
+                      >
+                        <span className="material-symbols-outlined text-lg">
+                          {showSignUpPassword ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
                     </div>
                   </div>
 
@@ -897,14 +933,24 @@ export default function LoginPage() {
                             <span className="material-symbols-outlined text-lg">lock</span>
                           </div>
                           <input 
-                            className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                            className="w-full pl-10 pr-11 py-2.5 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                             id="recoveryNewPassword" 
                             placeholder="At least 6 characters" 
                             required
-                            type="password"
+                            type={showRecoveryNewPassword ? "text" : "password"}
                             value={recoveryNewPassword}
                             onChange={(e) => setRecoveryNewPassword(e.target.value)}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowRecoveryNewPassword(!showRecoveryNewPassword)}
+                            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-outline hover:text-red-500 transition-colors cursor-pointer"
+                            title={showRecoveryNewPassword ? "Hide password" : "Show password"}
+                          >
+                            <span className="material-symbols-outlined text-lg">
+                              {showRecoveryNewPassword ? "visibility_off" : "visibility"}
+                            </span>
+                          </button>
                         </div>
                       </div>
 
@@ -918,14 +964,24 @@ export default function LoginPage() {
                             <span className="material-symbols-outlined text-lg">check</span>
                           </div>
                           <input 
-                            className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
+                            className="w-full pl-10 pr-11 py-2.5 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface placeholder-on-surface-variant/40 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner group-hover:border-outline-variant/60"
                             id="recoveryConfirmPassword" 
                             placeholder="Re-enter new password" 
                             required
-                            type="password"
+                            type={showRecoveryConfirmPassword ? "text" : "password"}
                             value={recoveryConfirmPassword}
                             onChange={(e) => setRecoveryConfirmPassword(e.target.value)}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowRecoveryConfirmPassword(!showRecoveryConfirmPassword)}
+                            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-outline hover:text-red-500 transition-colors cursor-pointer"
+                            title={showRecoveryConfirmPassword ? "Hide password" : "Show password"}
+                          >
+                            <span className="material-symbols-outlined text-lg">
+                              {showRecoveryConfirmPassword ? "visibility_off" : "visibility"}
+                            </span>
+                          </button>
                         </div>
                       </div>
 

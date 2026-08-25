@@ -1052,7 +1052,7 @@ _Please confirm your attendance!_`;
               }`}
             >
               <span className="material-symbols-outlined text-[20px]" style={currentView === "rbac_matrix" ? { fontVariationSettings: "'FILL' 1" } : {}}>shield</span>
-              RBAC Matrix
+              Permissions
             </button>
           </li>
         </ul>
