@@ -138,10 +138,10 @@ export async function ensurePermissionsSeeded() {
     const dbPerms = await prisma.permission.findMany();
 
     for (const pDef of SYSTEM_PERMISSIONS) {
-      const permObj = dbPerms.find((p) => p.code === pDef.code);
+      const permObj = dbPerms.find((p: { id: number; code: string }) => p.code === pDef.code);
       if (!permObj) continue;
 
-      for (const roleObj of dbRoles) {
+      for (const roleObj of dbRoles as Array<{ id: number; name: string }>) {
         const isDefaultEnabled = pDef.defaultRoles.includes(
           roleObj.name as 'Employee' | 'Manager' | 'Admin'
         );

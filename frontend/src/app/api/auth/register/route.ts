@@ -106,16 +106,10 @@ export async function POST(request: Request) {
       }
 
       // WhatsApp trigger hook
-      sendWhatsAppNotification({
-        recipientPhone: '+919999999999',
-        recipientName: 'SysAdmin',
-        messageType: 'SECURITY_ALERT',
-        parameters: {
-          alertTitle: 'New Manager Registration',
-          userName: user.name,
-          userEmail: user.email,
-        },
-      }).catch(e => console.error('WhatsApp manager trigger failed:', e));
+      sendWhatsAppNotification(
+        '919652456879',
+        `🏢 *PAYSWIFF ADMIN ALERT: NEW MANAGER REGISTRATION*\n\n👤 *Applicant:* ${user.name}\n📧 *Email:* ${user.email}\n⏳ *Status:* Pending Admin Authorization\n\n👉 Please review in Admin Console: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin`
+      ).catch(e => console.error('WhatsApp manager trigger failed:', e));
 
       return NextResponse.json({
         success: true,
