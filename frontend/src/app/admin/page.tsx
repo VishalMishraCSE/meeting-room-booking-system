@@ -6,6 +6,7 @@ import PayswiffLogo from "@/components/PayswiffLogo";
 import MeetingFeedbackModal from "@/components/MeetingFeedbackModal";
 import FlashScreen from "@/components/FlashScreen";
 import StarRating2D from "@/components/StarRating2D";
+import AdminRBACAndTeamHierarchy from "@/components/AdminRBACAndTeamHierarchy";
 
 interface Room {
   id: string;
@@ -1026,6 +1027,34 @@ _Please confirm your attendance!_`;
               User Feedback
             </button>
           </li>
+
+          <li>
+            <button 
+              onClick={() => setCurrentView("team_hierarchy")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
+                currentView === "team_hierarchy"
+                  ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "team_hierarchy" ? { fontVariationSettings: "'FILL' 1" } : {}}>groups</span>
+              Teams & Promotions
+            </button>
+          </li>
+
+          <li>
+            <button 
+              onClick={() => setCurrentView("rbac_matrix")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
+                currentView === "rbac_matrix"
+                  ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "rbac_matrix" ? { fontVariationSettings: "'FILL' 1" } : {}}>shield</span>
+              RBAC Matrix
+            </button>
+          </li>
         </ul>
 
 
@@ -1165,6 +1194,20 @@ _Please confirm your attendance!_`;
         {/* Dynamic Content Views */}
         <div className="flex-1 mt-0 md:mt-20 overflow-y-auto">
           
+          {/* VIEW: TEAM HIERARCHY & ROLE PROMOTIONS */}
+          {currentView === "team_hierarchy" && (
+            <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+              <AdminRBACAndTeamHierarchy activeSubTab="hierarchy" onRefresh={fetchData} />
+            </main>
+          )}
+
+          {/* VIEW: DYNAMIC RBAC PERMISSION MATRIX */}
+          {currentView === "rbac_matrix" && (
+            <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+              <AdminRBACAndTeamHierarchy activeSubTab="matrix" onRefresh={fetchData} />
+            </main>
+          )}
+
           {/* VIEW: ACTIVE RESERVATIONS & EXTENSION */}
           {currentView === "active_reservations" && (
             <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex flex-col gap-6">

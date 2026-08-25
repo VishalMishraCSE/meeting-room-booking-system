@@ -81,6 +81,7 @@ export default function ManagerPortal() {
   const [targetFeedbackBooking, setTargetFeedbackBooking] = useState<any>(null);
 
   // Unified reactive mock database state
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [rooms, setRooms] = useState<Room[]>([
     {
       id: "1",
@@ -342,9 +343,16 @@ export default function ManagerPortal() {
         setBookings(mappedBookings);
       }
 
-      // Fetch corporate users for attendee search autocomplete
+      // Fetch corporate users and assigned team members
       fetch("/api/users").then(res => res.json()).then(data => {
-        if (Array.isArray(data)) setCorporateUsers(data);
+        if (Array.isArray(data)) {
+          setCorporateUsers(data);
+          const currentUid = localStorage.getItem("userId") || userId;
+          if (currentUid) {
+            const myTeam = data.filter((u: any) => u.managerId && u.managerId.toString() === currentUid.toString());
+            setTeamMembers(myTeam);
+          }
+        }
       }).catch(e => console.error("Failed to fetch users:", e));
 
       // Fetch in-app notifications
@@ -922,6 +930,20 @@ _Please confirm your attendance!_`;
               Active Reservations
             </button>
           </li>
+
+          <li>
+            <button 
+              onClick={() => setCurrentView("team_roster")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-300 font-label-md text-label-md group hover:scale-105 active:scale-95 ${
+                currentView === "team_roster" 
+                  ? 'text-primary font-bold bg-primary/10 shadow-[inset_0_0_10px_rgba(128,131,255,0.1)] border border-primary/20' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]" style={currentView === "team_roster" ? { fontVariationSettings: "'FILL' 1" } : {}}>groups</span>
+              My Team ({teamMembers.length})
+            </button>
+          </li>
         </ul>
 
         {/* User Profile Card */}
@@ -1059,6 +1081,81 @@ _Please confirm your attendance!_`;
 
         {/* Dynamic Content Views */}
         <div className="flex-1 mt-0 md:mt-20 overflow-y-auto">
+          
+          {/* VIEW: MY TEAM ROSTER */}
+          {currentView === "team_roster" && (
+            <main className="p-stack-lg max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-2">
+                <div>
+                  <h1 className="font-headline-lg text-3xl font-bold text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-3xl">groups</span>
+                    My Assigned Team Roster
+                  </h1>
+                  <p className="font-body-md text-on-surface-variant mt-1">
+                    Direct reports assigned under your managerial authority. Booking requests from these members are routed to your Approval Queue.
+                  </p>
+                </div>
+                <span className="px-3.5 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-primary font-bold text-xs">
+                  {teamMembers.length} Active Direct Report{teamMembers.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {teamMembers.length === 0 ? (
+                <div className="glass-panel rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-3 border border-outline-variant/30">
+                  <span className="material-symbols-outlined text-outline text-5xl">person_search</span>
+                  <h3 className="font-headline-md text-lg font-bold text-on-surface">No Team Members Assigned Yet</h3>
+                  <p className="text-xs text-on-surface-variant max-w-md">
+                    New employees who choose your name during sign-up or are assigned by the SysAdmin will appear in this roster.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {teamMembers.map((member: any) => {
+                    const memberBookings = bookings.filter(
+                      (b: any) =>
+                        (b.userId && b.userId.toString() === member.id.toString()) ||
+                        (b.bookerEmail && b.bookerEmail.toLowerCase() === member.email.toLowerCase())
+                    );
+
+                    return (
+                      <div
+                        key={member.id}
+                        className="bg-surface-container/70 backdrop-blur-xl border border-outline-variant/30 rounded-2xl p-5 shadow-lg space-y-4 hover:border-primary/40 transition-all group"
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-lg flex items-center justify-center shadow-md">
+                            {member.name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">
+                              {member.name}
+                            </h4>
+                            <p className="text-xs text-on-surface-variant truncate">{member.email}</p>
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded text-[9px] font-extrabold bg-blue-500/15 text-blue-400">
+                              {member.department?.name || "Corporate Team"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-3 border-t border-outline-variant/20 text-center">
+                          <div className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/10">
+                            <p className="text-[10px] text-on-surface-variant font-medium">Active Bookings</p>
+                            <h5 className="text-base font-black text-on-surface">{memberBookings.length}</h5>
+                          </div>
+                          <div className="p-2 rounded-xl bg-surface-container-low border border-outline-variant/10">
+                            <p className="text-[10px] text-on-surface-variant font-medium">Status</p>
+                            <span className="text-[11px] font-bold text-emerald-400 flex items-center justify-center gap-1 mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Active
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </main>
+          )}
           
           {/* VIEW: ACTIVE RESERVATIONS & EXTENSION */}
           {currentView === "active_reservations" && (() => {

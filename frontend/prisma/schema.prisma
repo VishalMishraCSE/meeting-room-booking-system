@@ -206,3 +206,41 @@ model MeetingFeedback {
   @@map("meeting_feedbacks")
 }
 
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique // e.g. "Employee", "Manager", "Admin"
+  description String?
+  isDefault   Boolean          @default(false)
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  code        String           @unique // e.g. "BOOK_STANDARD_ROOMS", "PROMOTE_DEMOTE_USERS"
+  name        String
+  category    String           // "Reservations", "Approvals", "Facilities", "Security & RBAC"
+  description String?
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  isEnabled    Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+

@@ -21,6 +21,9 @@ export default function LoginPage() {
   const [signUpName, setSignUpName] = useState("");
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
+  const [signUpRole, setSignUpRole] = useState<"Employee" | "Manager">("Employee");
+  const [selectedManagerId, setSelectedManagerId] = useState<string>("");
+  const [availableManagers, setAvailableManagers] = useState<Array<{ id: number; name: string; email: string; department: string; employeeCount: number }>>([]);
 
   // Account Recovery / Forgot Password state
   const [recoveryStep, setRecoveryStep] = useState<"request" | "verify" | "reset">("request");
@@ -37,7 +40,7 @@ export default function LoginPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize theme
+  // Initialize theme & load active managers for signup selection
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
     if (storedTheme === "light") {
@@ -47,6 +50,14 @@ export default function LoginPage() {
       setTheme("dark");
       document.documentElement.classList.add("dark");
     }
+
+    // Fetch active managers for employee assignment dropdown
+    fetch("/api/users/managers")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.managers) setAvailableManagers(data.managers);
+      })
+      .catch((err) => console.error("Failed to load managers:", err));
   }, []);
 
   const toggleTheme = () => {
@@ -120,7 +131,8 @@ export default function LoginPage() {
           name: signUpName.trim(),
           email: signUpEmail.trim(),
           password: signUpPassword,
-          role: "Employee",
+          role: signUpRole,
+          managerId: signUpRole === "Employee" && selectedManagerId ? selectedManagerId : null,
         }),
       });
 
@@ -130,13 +142,22 @@ export default function LoginPage() {
         throw new Error(data.error || "Registration failed");
       }
 
-      // Store local user state
+      if (data.requiresApproval) {
+        setSuccessMessage("🎉 Manager registration submitted! A SysAdmin has been notified to authorize your account. You will receive an email once activated.");
+        setSignUpName("");
+        setSignUpEmail("");
+        setSignUpPassword("");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Store local user state for employees
       localStorage.setItem("userRole", data.user.role);
       localStorage.setItem("userName", data.user.name);
       localStorage.setItem("userEmail", data.user.email);
       localStorage.setItem("userId", data.user.id.toString());
 
-      setSuccessMessage("Account created successfully! Redirecting...");
+      setSuccessMessage("Account created successfully! Redirecting to workspace...");
 
       setTimeout(() => {
         const targetPath = data.user.role === "admin" ? "/admin" : data.user.role === "manager" ? "/manager" : "/";
@@ -546,6 +567,39 @@ export default function LoginPage() {
               {/* 2. SIGN UP FORM */}
               {authMode === "signup" && (
                 <form onSubmit={handleRegister} className="space-y-4">
+                  {/* Role Selection Tabs */}
+                  <div className="space-y-1.5">
+                    <label className="font-label-md text-xs text-on-surface-variant block font-medium">
+                      Select Workspace Role
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 bg-surface-container-low/60 p-1 rounded-xl border border-outline-variant/30">
+                      <button
+                        type="button"
+                        onClick={() => setSignUpRole("Employee")}
+                        className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                          signUpRole === "Employee"
+                            ? "bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-md shadow-red-600/20"
+                            : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">badge</span>
+                        Employee
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSignUpRole("Manager")}
+                        className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                          signUpRole === "Manager"
+                            ? "bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-md shadow-red-600/20"
+                            : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">supervisor_account</span>
+                        Manager (Lead)
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="space-y-1.5">
                     <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="signUpName">
                       Full Name
@@ -586,6 +640,49 @@ export default function LoginPage() {
                     </div>
                   </div>
 
+                  {/* Reporting Manager Dropdown (When signing up as an Employee) */}
+                  {signUpRole === "Employee" && (
+                    <div className="space-y-1.5">
+                      <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="selectedManager">
+                        Reporting Manager (Team Lead)
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline group-focus-within:text-red-500 transition-colors">
+                          <span className="material-symbols-outlined text-lg">diversity_3</span>
+                        </div>
+                        <select
+                          id="selectedManager"
+                          value={selectedManagerId}
+                          onChange={(e) => setSelectedManagerId(e.target.value)}
+                          className="w-full pl-10 pr-8 py-3 bg-surface-container-low/50 border border-outline-variant/30 rounded-xl font-body-md text-sm text-on-surface focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all duration-200 shadow-inner appearance-none cursor-pointer"
+                        >
+                          <option value="">Auto-Assign to Available Team Lead</option>
+                          {availableManagers.map((mgr) => (
+                            <option key={mgr.id} value={mgr.id}>
+                              {mgr.name} ({mgr.department} · {mgr.employeeCount} reports)
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-outline">
+                          <span className="material-symbols-outlined text-base">expand_more</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant/70 pl-1">
+                        Select your team manager to route room approval requests directly.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Manager Registration Verification Notice */}
+                  {signUpRole === "Manager" && (
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5">
+                      <span className="material-symbols-outlined text-amber-500 text-base mt-0.5 shrink-0">verified_user</span>
+                      <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                        <strong>Administrative Authorization Required:</strong> Manager accounts have room approval authority. After sign-up, a SysAdmin will verify your account before you can sign in.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-1.5">
                     <label className="font-label-md text-xs text-on-surface-variant block font-medium" htmlFor="signUpPassword">
                       Password
@@ -616,11 +713,11 @@ export default function LoginPage() {
                     {isSubmitting ? (
                       <>
                         <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        Creating Account...
+                        Processing Registration...
                       </>
                     ) : (
                       <>
-                        Create Account & Sign In
+                        {signUpRole === "Manager" ? "Submit Manager Request" : "Create Account & Sign In"}
                         <span className="material-symbols-outlined text-sm">arrow_forward</span>
                       </>
                     )}

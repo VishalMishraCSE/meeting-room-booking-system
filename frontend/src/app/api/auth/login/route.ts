@@ -27,8 +27,14 @@ export async function POST(request: Request) {
     }
 
     if (!user.isActive) {
+      if (user.role.toLowerCase() === 'manager') {
+        return NextResponse.json(
+          { error: 'Your Manager account is currently pending SysAdmin verification. You will receive an email once activated.' },
+          { status: 403 }
+        );
+      }
       return NextResponse.json(
-        { error: 'This corporate account has been deactivated' },
+        { error: 'This corporate account has been deactivated or is awaiting administrative authorization' },
         { status: 403 }
       );
     }

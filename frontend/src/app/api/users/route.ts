@@ -16,7 +16,7 @@ async function getSessionUser() {
   }
 }
 
-// GET /api/users — returns list of active corporate users for attendee autocomplete
+// GET /api/users — returns list of corporate users with team hierarchy for attendees and Admin governance
 export async function GET(request: Request) {
   try {
     const sessionUser = await getSessionUser();
@@ -24,18 +24,43 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const includeAll = searchParams.get('all') === 'true' && sessionUser.role?.toLowerCase() === 'admin';
+
     const users = await prisma.user.findMany({
-      where: { isActive: true },
+      where: includeAll ? {} : { isActive: true },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        isActive: true,
+        managerId: true,
+        manager: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        employees: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isActive: true,
+          },
+        },
         department: {
-          select: { name: true }
-        }
+          select: { id: true, name: true },
+        },
+        createdAt: true,
       },
-      orderBy: { name: 'asc' }
+      orderBy: [
+        { role: 'asc' },
+        { name: 'asc' },
+      ],
     });
 
     return NextResponse.json(users);

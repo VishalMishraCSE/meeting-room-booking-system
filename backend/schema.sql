@@ -196,6 +196,44 @@ CREATE TABLE room_supplies (
         REFERENCES rooms(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ==========================================
+-- 13. Roles Table (RBAC Core)
+-- ==========================================
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(255) NULL,
+    isDefault BOOLEAN DEFAULT FALSE NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- 14. Permissions Table (Action Capabilities)
+-- ==========================================
+CREATE TABLE permissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    description VARCHAR(255) NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- 15. Role Permissions Junction Table
+-- ==========================================
+CREATE TABLE role_permissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    roleId INT NOT NULL,
+    permissionId INT NOT NULL,
+    isEnabled BOOLEAN DEFAULT TRUE NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+    UNIQUE KEY uq_role_permission (roleId, permissionId),
+    CONSTRAINT fk_rp_role FOREIGN KEY (roleId) REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rp_permission FOREIGN KEY (permissionId) REFERENCES permissions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
 -- INDEXES FOR HIGH-PERFORMANCE SEARCHES
@@ -209,3 +247,5 @@ CREATE INDEX idx_attendees_email ON attendees(email);
 CREATE INDEX idx_booking_histories_booking ON booking_histories(bookingId);
 CREATE INDEX idx_notifications_user ON notifications(userId);
 CREATE INDEX idx_supplies_room ON room_supplies(roomId);
+CREATE INDEX idx_role_permissions_role ON role_permissions(roleId);
+CREATE INDEX idx_role_permissions_perm ON role_permissions(permissionId);
