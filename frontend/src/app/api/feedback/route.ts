@@ -207,6 +207,10 @@ export async function POST(request: Request) {
     }
 
     // Direct room feedback without specific booking
+    if (!targetRoomId) {
+      return NextResponse.json({ error: 'roomId is required' }, { status: 400 });
+    }
+
     const recentBooking = await prisma.booking.findFirst({
       where: { roomId: targetRoomId },
       orderBy: { id: 'desc' }
@@ -220,7 +224,7 @@ export async function POST(request: Request) {
       data: {
         bookingId: recentBooking.id,
         userId: sessionUser.id,
-        roomId: targetRoomId!,
+        roomId: targetRoomId,
         rating: parsedRating,
         comment: comment ? comment.trim() : null
       }
